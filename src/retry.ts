@@ -24,7 +24,7 @@ function sleep(ms: number): Promise<void> {
 
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  label: string,
+  _label: string,
   maxRetries: number = DEFAULT_MAX_RETRIES
 ): Promise<T> {
   let lastError: Error | undefined;

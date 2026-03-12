@@ -70,7 +70,7 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
     );
   };
 
-  const activateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
+  const activateLicense = async (key: string, _instanceId?: string): Promise<boolean> => {
     // Note: Lemon Squeezy doesn't have a direct activation API
     // This would typically be handled by your application logic
     // based on the license key details and activation limits
@@ -88,7 +88,7 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
     return true; // Placeholder - implement based on your needs
   };
 
-  const deactivateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
+  const deactivateLicense = async (_key: string, _instanceId?: string): Promise<boolean> => {
     // Similar to activateLicense, this would be handled by your application logic
     // based on your activation tracking system
     

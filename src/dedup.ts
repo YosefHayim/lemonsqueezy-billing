@@ -30,7 +30,7 @@ export class InMemoryDedupBackend implements DedupBackend {
     return this.seen.has(key);
   }
 
-  async markDuplicate(key: string, ttlMs: number): Promise<void> {
+  async markDuplicate(key: string, _ttlMs: number): Promise<void> {
     this.seen.set(key, Date.now());
   }
 }
