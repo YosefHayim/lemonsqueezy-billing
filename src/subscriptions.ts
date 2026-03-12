@@ -4,7 +4,7 @@ import { withRetry } from "./retry.js";
 
 export function createSubscriptionManagement(): SubscriptionManagement {
   return {
-    pauseSubscription: async (subscriptionId: string, reason?: string) => {
+    pauseSubscription: async (subscriptionId: string, _reason?: string) => {
       const response = await withRetry(
         () => updateSubscription(subscriptionId, { 
           pause: { 
@@ -33,7 +33,7 @@ export function createSubscriptionManagement(): SubscriptionManagement {
       }
     },
 
-    cancelSubscription: async (subscriptionId: string, endsImmediately = false) => {
+    cancelSubscription: async (subscriptionId: string, _endsImmediately = false) => {
       const response = await withRetry(
         () => cancelSubscription(subscriptionId),
         "cancelSubscription"

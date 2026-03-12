@@ -1,4 +1,4 @@
-import { listCustomers, getCustomer } from "@lemonsqueezy/lemonsqueezy.js";
+import { listCustomers } from "@lemonsqueezy/lemonsqueezy.js";
 import type { CustomerManagement, CustomerLookup } from "./types.js";
 import { withRetry } from "./retry.js";
 
@@ -14,7 +14,19 @@ export function createCustomerManagement(): CustomerManagement {
     }
 
     const customer = response.data.data[0];
-    const attrs = customer.attributes;
+    const attrs = customer.attributes as {
+      email: string;
+      name: string;
+      billing_address?: {
+        name: string;
+        address: string;
+        address2?: string;
+        city: string;
+        country: string;
+        zip: string;
+        state?: string;
+      };
+    };
 
     // Get subscriptions for this customer
     const subscriptionsResponse = await withRetry(
@@ -34,11 +46,21 @@ export function createCustomerManagement(): CustomerManagement {
         endsAt: String(item.attributes.ends_at ?? ""),
       })) || [];
 
+    const billingAddress = attrs.billing_address ? {
+      name: attrs.billing_address.name || attrs.name || "",
+      address1: attrs.billing_address.address || "",
+      address2: attrs.billing_address.address2 || undefined,
+      city: attrs.billing_address.city || "",
+      country: attrs.billing_address.country || "",
+      zip: attrs.billing_address.zip || "",
+      state: attrs.billing_address.state || undefined,
+    } : undefined;
+
     return {
       id: customer.id,
       email: attrs.email,
       name: attrs.name,
-      billingAddress: undefined, // TODO: Implement based on actual API response
+      billingAddress,
       subscriptions,
     };
   };

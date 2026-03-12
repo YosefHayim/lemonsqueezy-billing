@@ -3,3 +3,5 @@ dist
 .env
 .billing-cache.json
 .cursorrules
+.kilocodemodes
+billing-config.ts
