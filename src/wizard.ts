@@ -518,7 +518,7 @@ class BillingWizard {
   }
 
   private generateConfigContent(): string {
-    return `import type { BillingConfig } from "@yosefhayim/lemonsqueezy-billing";
+    return `import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";
 
 export const billingConfig: BillingConfig = {
   apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${this.state.apiKey}",
@@ -527,45 +527,65 @@ export const billingConfig: BillingConfig = {
   cachePath: "${this.state.cachePath}",
   logger: { filePath: "${this.state.loggerPath}" },
   callbacks: {
-    onPurchase: async (event) => {
+    onPurchase: async (event: PurchaseEvent) => {
       // Handle purchase event
       console.log("Purchase:", event);
-      // TODO: Add your purchase logic here
+      // Add your purchase logic here
     },
-    onRefund: async (event) => {
+    onRefund: async (event: RefundEvent) => {
       // Handle refund event
       console.log("Refund:", event);
-      // TODO: Add your refund logic here
+      // Add your refund logic here
     },
-    onSubscriptionCreated: async (event) => {
+    onSubscriptionCreated: async (event: SubscriptionEvent) => {
       // Handle subscription created
       console.log("Subscription created:", event);
-      // TODO: Add your subscription created logic here
+      // Add your subscription created logic here
     },
-    onSubscriptionUpdated: async (event) => {
+    onSubscriptionUpdated: async (event: SubscriptionEvent) => {
       // Handle subscription updated
       console.log("Subscription updated:", event);
-      // TODO: Add your subscription updated logic here
+      // Add your subscription updated logic here
     },
-    onSubscriptionCancelled: async (event) => {
+    onSubscriptionCancelled: async (event: SubscriptionEvent) => {
       // Handle subscription cancelled
       console.log("Subscription cancelled:", event);
-      // TODO: Add your subscription cancelled logic here
+      // Add your subscription cancelled logic here
     },
-    onPaymentFailed: async (event) => {
+    onPaymentFailed: async (event: PaymentFailedEvent) => {
       // Handle payment failed
       console.log("Payment failed:", event);
-      // TODO: Add your payment failed logic here
+      // Add your payment failed logic here
     },
-    onLicenseKeyCreated: async (event) => {
+    onSubscriptionPaused: async (event: SubscriptionPausedEvent) => {
+      // Handle subscription paused
+      console.log("Subscription paused:", event);
+      // Add your subscription paused logic here
+    },
+    onSubscriptionResumed: async (event: SubscriptionResumedEvent) => {
+      // Handle subscription resumed
+      console.log("Subscription resumed:", event);
+      // Add your subscription resumed logic here
+    },
+    onSubscriptionPaymentSuccess: async (event: SubscriptionPaymentSuccessEvent) => {
+      // Handle subscription payment success
+      console.log("Subscription payment success:", event);
+      // Add your subscription payment success logic here
+    },
+    onSubscriptionPaymentRecovered: async (event: SubscriptionPaymentRecoveredEvent) => {
+      // Handle subscription payment recovered
+      console.log("Subscription payment recovered:", event);
+      // Add your subscription payment recovered logic here
+    },
+    onLicenseKeyCreated: async (event: LicenseKeyEvent) => {
       // Handle license key created
       console.log("License key created:", event);
-      // TODO: Add your license key created logic here
+      // Add your license key created logic here
     },
-    onLicenseKeyUpdated: async (event) => {
+    onLicenseKeyUpdated: async (event: LicenseKeyEvent) => {
       // Handle license key updated
       console.log("License key updated:", event);
-      // TODO: Add your license key updated logic here
+      // Add your license key updated logic here
     }
   }
 };
