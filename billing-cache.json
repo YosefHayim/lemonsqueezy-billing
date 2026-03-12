@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-03-12T00:55:54.008Z",
+  "store": {
+    "id": "270009",
+    "name": "JTS",
+    "slug": "josephtsolutions",
+    "currency": "USD"
+  },
+  "products": [
+    {
+      "id": "880030",
+      "name": "Prompt queue lifetime access",
+      "description": "<p>Lifetime access to the powerful extension to produce over 3,000 monthly images! </p>",
+      "status": "published",
+      "variants": [
+        {
+          "id": "1385541",
+          "name": "Default",
+          "price": 499,
+          "priceFormatted": "$4.99",
+          "isSubscription": false,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "880045",
+      "name": "Sorqa life time access",
+      "description": "<p>Lifetime access to the powerful extension to produce over 120 monthly images on Sora!</p>",
+      "status": "published",
+      "variants": [
+        {
+          "id": "1385559",
+          "name": "Default",
+          "price": 499,
+          "priceFormatted": "$4.99",
+          "isSubscription": false,
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}
