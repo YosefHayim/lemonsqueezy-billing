@@ -18,8 +18,8 @@ import prompts from "prompts";
 import chalk from "chalk";
 import { createWriteStream } from "node:fs";
 import { resolve } from "node:path";
-import { createBilling } from "./index.js";
-import { fetchProducts, flattenPlans } from "./plans.js";
+import { createBilling } from "@core/index.js";
+import { fetchProducts, flattenPlans } from "@core/plans.js";
 import "dotenv/config";
 
 // Types for prompts
@@ -518,87 +518,67 @@ class BillingWizard {
   }
 
   private generateConfigContent(): string {
-    return `import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";
-
-export const billingConfig: BillingConfig = {
-  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${this.state.apiKey}",
-  storeId: "${this.state.selectedStoreIds[0]}",
-  webhookSecret: "${this.state.webhookSecret}",
-  cachePath: "${this.state.cachePath}",
-  logger: { filePath: "${this.state.loggerPath}" },
-  callbacks: {
-    onPurchase: async (event: PurchaseEvent) => {
-      // Handle purchase event
-      console.log("Purchase:", event);
-      // Add your purchase logic here
-    },
-    onRefund: async (event: RefundEvent) => {
-      // Handle refund event
-      console.log("Refund:", event);
-      // Add your refund logic here
-    },
-    onSubscriptionCreated: async (event: SubscriptionEvent) => {
-      // Handle subscription created
-      console.log("Subscription created:", event);
-      // Add your subscription created logic here
-    },
-    onSubscriptionUpdated: async (event: SubscriptionEvent) => {
-      // Handle subscription updated
-      console.log("Subscription updated:", event);
-      // Add your subscription updated logic here
-    },
-    onSubscriptionCancelled: async (event: SubscriptionEvent) => {
-      // Handle subscription cancelled
-      console.log("Subscription cancelled:", event);
-      // Add your subscription cancelled logic here
-    },
-    onPaymentFailed: async (event: PaymentFailedEvent) => {
-      // Handle payment failed
-      console.log("Payment failed:", event);
-      // Add your payment failed logic here
-    },
-    onSubscriptionPaused: async (event: SubscriptionPausedEvent) => {
-      // Handle subscription paused
-      console.log("Subscription paused:", event);
-      // Add your subscription paused logic here
-    },
-    onSubscriptionResumed: async (event: SubscriptionResumedEvent) => {
-      // Handle subscription resumed
-      console.log("Subscription resumed:", event);
-      // Add your subscription resumed logic here
-    },
-    onSubscriptionPaymentSuccess: async (event: SubscriptionPaymentSuccessEvent) => {
-      // Handle subscription payment success
-      console.log("Subscription payment success:", event);
-      // Add your subscription payment success logic here
-    },
-    onSubscriptionPaymentRecovered: async (event: SubscriptionPaymentRecoveredEvent) => {
-      // Handle subscription payment recovered
-      console.log("Subscription payment recovered:", event);
-      // Add your subscription payment recovered logic here
-    },
-    onLicenseKeyCreated: async (event: LicenseKeyEvent) => {
-      // Handle license key created
-      console.log("License key created:", event);
-      // Add your license key created logic here
-    },
-    onLicenseKeyUpdated: async (event: LicenseKeyEvent) => {
-      // Handle license key updated
-      console.log("License key updated:", event);
-      // Add your license key updated logic here
+    const lines: string[] = [];
+    
+    lines.push(`import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";`);
+    lines.push(``);
+    lines.push(`export const billingConfig: BillingConfig = {`);
+    lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${ this.state.apiKey}",`);
+    lines.push(`  storeId: "${ this.state.selectedStoreIds[0]}",`);
+    lines.push(`  webhookSecret: "${ this.state.webhookSecret}",`);
+    lines.push(`  cachePath: "${ this.state.cachePath}",`);
+    lines.push(`  logger: { filePath: "${ this.state.loggerPath}" },`);
+    lines.push(`  callbacks: {`);
+    lines.push(`    onPurchase: async (event: PurchaseEvent) => {`);
+    lines.push(`      console.log("Purchase:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onRefund: async (event: RefundEvent) => {`);
+    lines.push(`      console.log("Refund:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionCreated: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription created:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionUpdated: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription updated:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionCancelled: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription cancelled:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onPaymentFailed: async (event: PaymentFailedEvent) => {`);
+    lines.push(`      console.log("Payment failed:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaused: async (event: SubscriptionPausedEvent) => {`);
+    lines.push(`      console.log("Subscription paused:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionResumed: async (event: SubscriptionResumedEvent) => {`);
+    lines.push(`      console.log("Subscription resumed:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaymentSuccess: async (event: SubscriptionPaymentSuccessEvent) => {`);
+    lines.push(`      console.log("Subscription payment success:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaymentRecovered: async (event: SubscriptionPaymentRecoveredEvent) => {`);
+    lines.push(`      console.log("Subscription payment recovered:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onLicenseKeyCreated: async (event: LicenseKeyEvent) => {`);
+    lines.push(`      console.log("License key created:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onLicenseKeyUpdated: async (event: LicenseKeyEvent) => {`);
+    lines.push(`      console.log("License key updated:", event);`);
+    lines.push(`    }`);
+    lines.push(`  }`);
+    lines.push(`};`);
+    
+    if (this.state.webhookUrl) {
+      lines.push(``);
+      lines.push(`export const webhookConfig = {`);
+      lines.push(`  url: "${ this.state.webhookUrl}",`);
+      const eventsStr = this.state.webhookEvents.map(e => `"${e}"`).join(", ");
+      lines.push(`  events: [${eventsStr}],`);
+      lines.push(`  secret: "${ this.state.webhookSecret.slice(0, 8)}...${ this.state.webhookSecret.slice(-4)}"`);
+      lines.push(`};`);
     }
-  }
-};
-
-${this.state.webhookUrl ? `
-// Webhook configuration
-export const webhookConfig = {
-  url: "${this.state.webhookUrl}",
-  events: [${this.state.webhookEvents.map(e => `"${e}"`).join(", ")}],
-  secret: "${this.state.webhookSecret}"
-};
-` : ""}
-`;
+    
+    return lines.join("\n");
   }
 
   private async offerRealCycleFlow(): Promise<void> {
