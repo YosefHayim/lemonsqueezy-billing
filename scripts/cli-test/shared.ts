@@ -65,6 +65,25 @@ export function getApiKey(mode: "sandbox" | "live" | "both", env: Record<string,
   }
 }
 
+export function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return email;
+  const [local, domain] = email.split("@");
+  const maskedLocal = local.length > 2 
+    ? local[0] + "*".repeat(local.length - 2) + local[local.length - 1]
+    : local[0] + "*";
+  return `${maskedLocal}@${domain}`;
+}
+
+export function maskKey(key: string): string {
+  if (!key || key.length <= 8) return "***";
+  return key.slice(0, 4) + "..." + key.slice(-4);
+}
+
+export function maskId(id: string): string {
+  if (!id || id.length <= 8) return "***";
+  return id.slice(0, 4) + "..." + id.slice(-4);
+}
+
 export function pass(label: string) { 
   console.log(`  ✅ ${label}`); 
 }

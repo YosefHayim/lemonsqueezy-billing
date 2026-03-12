@@ -4,4 +4,9 @@ dist
 .billing-cache.json
 .cursorrules
 .kilocodemodes
+.clinerules
+.cursor
+.kilocode
+agents
 billing-config.ts
+test-workflows.sh

@@ -1,6 +1,6 @@
 import { createBilling } from "../../dist/index.js";
 import { readFileSync, existsSync } from "node:fs";
-import { TestConfig } from "./shared.js";
+import { TestConfig, maskEmail, maskKey, maskId } from "./shared.js";
 
 export async function runLiveTests(config: TestConfig): Promise<void> {
   const { pass, fail, cleanupFiles, logPhaseStart, logPhaseEnd } = await import("./shared.js");
@@ -93,9 +93,9 @@ export async function runLiveTests(config: TestConfig): Promise<void> {
     try {
       const customer = await billing.getCustomerByEmail(config.testEmail);
       if (customer) {
-        pass(`Customer lookup for ${config.testEmail}: ${customer.id}`);
+        pass(`Customer lookup for ${maskEmail(config.testEmail)}: ${customer.id}`);
       } else {
-        pass(`Customer lookup for ${config.testEmail}: not found (expected)`);
+        pass(`Customer lookup for ${maskEmail(config.testEmail)}: not found (expected)`);
       }
     } catch (err) {
       fail("Customer lookup", (err as Error).message);
@@ -109,9 +109,9 @@ export async function runLiveTests(config: TestConfig): Promise<void> {
     try {
       const license = await billing.validateLicense(config.testLicenseKey);
       if (license.valid) {
-        pass(`License validation for ${config.testLicenseKey}: valid`);
+        pass(`License validation for ${maskKey(config.testLicenseKey)}: valid`);
       } else {
-        pass(`License validation for ${config.testLicenseKey}: invalid (expected for test)`);
+        pass(`License validation for ${maskKey(config.testLicenseKey)}: invalid (expected for test)`);
       }
     } catch (err) {
       fail("License validation", (err as Error).message);
@@ -125,11 +125,11 @@ export async function runLiveTests(config: TestConfig): Promise<void> {
     try {
       // Test pause subscription
       await billing.pauseSubscription(config.testSubscriptionId, "test pause");
-      pass(`Subscription pause for ${config.testSubscriptionId}: success`);
+      pass(`Subscription pause for ${maskId(config.testSubscriptionId)}: success`);
       
       // Test resume subscription
       await billing.resumeSubscription(config.testSubscriptionId);
-      pass(`Subscription resume for ${config.testSubscriptionId}: success`);
+      pass(`Subscription resume for ${maskId(config.testSubscriptionId)}: success`);
     } catch (err) {
       fail("Subscription management", (err as Error).message);
     }
