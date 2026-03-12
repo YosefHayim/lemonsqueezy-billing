@@ -1,0 +1,62 @@
+# Publish to npm via Trusted Publishing (OIDC)
+# ──────────────────────────────────────────────
+# Publishes to npm when a version tag is pushed (pairs with release.yml).
+# Uses OIDC-based trusted publishing — no NPM_TOKEN secret needed.
+#
+# Setup (one-time):
+#   1. Go to https://www.npmjs.com/package/{{PACKAGE_NAME}}/access
+#   2. Under "Trusted Publishers", add:
+#        - Repository owner: {{OWNER}}
+#        - Repository name: {{PROJECT_NAME}}
+#        - Workflow filename: publish.yml
+#        - Environment: (leave empty)
+#
+# Customize:
+#   - node-version: match your project's requirement
+#   - Build/test commands: match your package.json scripts
+
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Update npm for trusted publishing support
+        run: npm install -g npm@latest
+
+      - name: Publish to npm
+        run: pnpm publish --no-git-checks --access public --provenance

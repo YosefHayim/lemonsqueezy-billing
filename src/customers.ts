@@ -1,0 +1,63 @@
+import { listCustomers, getCustomer } from "@lemonsqueezy/lemonsqueezy.js";
+import type { CustomerManagement, CustomerLookup } from "./types.js";
+import { withRetry } from "./retry.js";
+
+export function createCustomerManagement(): CustomerManagement {
+  const getCustomerByEmail = async (email: string): Promise<CustomerLookup | null> => {
+    const response = await withRetry(
+      () => listCustomers({ filter: { email } }),
+      "listCustomers"
+    );
+
+    if (response.error || !response.data?.data || response.data.data.length === 0) {
+      return null;
+    }
+
+    const customer = response.data.data[0];
+    const attrs = customer.attributes;
+
+    // Get subscriptions for this customer
+    const subscriptionsResponse = await withRetry(
+      () => listCustomers({ filter: { email }, include: ["subscriptions"] }),
+      "listCustomersWithSubscriptions"
+    );
+
+    const subscriptions = subscriptionsResponse.data?.included
+      ?.filter(item => item.type === "subscription")
+      .map(item => ({
+        id: item.id,
+        status: String(item.attributes.status ?? ""),
+        variantId: String(item.attributes.variant_id ?? ""),
+        productId: String(item.attributes.product_id ?? ""),
+        price: Number(item.attributes.renews_at_price ?? 0),
+        nextBillingDate: String(item.attributes.renews_at ?? ""),
+        endsAt: String(item.attributes.ends_at ?? ""),
+      })) || [];
+
+    return {
+      id: customer.id,
+      email: attrs.email,
+      name: attrs.name,
+      billingAddress: undefined, // TODO: Implement based on actual API response
+      subscriptions,
+    };
+  };
+
+  const getSubscriptionsForUser = async (userId: string): Promise<CustomerLookup['subscriptions']> => {
+    // This would typically require storing the userId in custom_data
+    // For now, we'll search by email if userId is an email
+    if (userId.includes('@')) {
+      const customer = await getCustomerByEmail(userId);
+      return customer?.subscriptions || [];
+    }
+
+    // If userId is not an email, you would need to implement
+    // a lookup mechanism based on your user database
+    return [];
+  };
+
+  return {
+    getCustomerByEmail,
+    getSubscriptionsForUser,
+  };
+}

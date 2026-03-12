@@ -1,0 +1,14 @@
+# lemonsqueezy-billing
+
+> The missing billing layer for Lemon Squeezy. Auto-discover stores/products, create checkout sessions, handle webhooks — one function call.
+
+## Docs
+- [README](./README.md): Full documentation, API reference, and examples
+- [Types](./src/types.ts): All TypeScript interfaces and type definitions
+
+## Examples
+- [Quick Start](./README.md#quick-start): Initialize billing and create your first checkout
+
+## Optional
+- [Contributing](./CONTRIBUTING.md): Development setup and guidelines
+- [Changelog](./CHANGELOG.md): Version history
