@@ -21,16 +21,18 @@ function getPlatformOpenCommand(): string {
 }
 
 async function openUrl(url: string): Promise<void> {
-  const { exec } = await import('child_process');
+  const { exec, execFile } = await import('child_process');
+  if (process.platform === 'win32') {
+    return new Promise((resolve, reject) => {
+      exec(`start "" "${url.replace(/"/g, '')}"`, (error) => {
+        if (error) reject(error); else resolve();
+      });
+    });
+  }
   const command = getPlatformOpenCommand();
-
   return new Promise((resolve, reject) => {
-    exec(`${command} "${url}"`, (error) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
+    execFile(command, [url], (error) => {
+      if (error) reject(error); else resolve();
     });
   });
 }

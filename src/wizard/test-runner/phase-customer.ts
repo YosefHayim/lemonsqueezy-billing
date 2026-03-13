@@ -47,32 +47,40 @@ export async function runPhaseCustomer(
     );
   } catch { /* empty */ }
 
-  let checkoutUrl: string | undefined;
-  try {
-    const checkout = await loggedCall(
-      '2.3 createCheckout',
-      () =>
-        createCheckout(config.storeId, config.variantId ?? '', {
-          checkoutData: {
-            email: 'wizard-test@example.com',
-            custom: { user_id: 'wizard-test-user' },
-          },
-        }),
-      loading
-    );
-    checkoutUrl = checkout.data?.data?.attributes?.url;
-  } catch { /* empty */ }
-
-  if (checkoutUrl) {
+  if (!config.variantId) {
+    console.log('[-] Skipping 2.3 createCheckout: no variantId in config');
+  } else {
+    let checkoutUrl: string | undefined;
     try {
-      const completed = await stepCheckoutOptional(checkoutUrl);
-      if (completed) {
-        const envOrderId = process.env['LS_TEST_ORDER_ID'];
-        if (envOrderId) {
-          updates.orderId = envOrderId;
-        }
-      }
+      const checkout = await loggedCall(
+        '2.3 createCheckout',
+        () =>
+          createCheckout(config.storeId, config.variantId ?? '', {
+            checkoutData: {
+              email: 'wizard-test@example.com',
+              custom: { user_id: 'wizard-test-user' },
+            },
+          }),
+        loading
+      );
+      checkoutUrl = checkout.data?.data?.attributes?.url;
     } catch { /* empty */ }
+
+    if (checkoutUrl) {
+      try {
+        const completed = await stepCheckoutOptional(checkoutUrl);
+        if (completed) {
+          const { input } = await import('@inquirer/prompts');
+          const enteredOrderId = await input({
+            message: 'Enter the Order ID from the completed checkout (leave blank to skip):',
+            default: '',
+          });
+          if (enteredOrderId) {
+            updates.orderId = enteredOrderId;
+          }
+        }
+      } catch { /* empty */ }
+    }
   }
 
   return updates;

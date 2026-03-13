@@ -45,17 +45,20 @@ export async function runAllPhases(
     currentConfig = { ...currentConfig, orderId: envOrderId };
   }
 
-  await safePhase('Phase 3: Order', () =>
+  const orderResult = await safePhase('Phase 3: Order', () =>
     runPhaseOrder(currentConfig, loading)
   );
+  currentConfig = { ...currentConfig, ...orderResult };
 
-  await safePhase('Phase 4: Subscription', () =>
+  const subResult = await safePhase('Phase 4: Subscription', () =>
     runPhaseSubscription(currentConfig, loading)
   );
+  currentConfig = { ...currentConfig, ...subResult };
 
-  await safePhase('Phase 5: License', () =>
+  const licResult = await safePhase('Phase 5: License', () =>
     runPhaseLicense(currentConfig, loading)
   );
+  currentConfig = { ...currentConfig, ...licResult };
 
   await safePhase('Phase 6: Resolution', () =>
     runPhaseResolution(currentConfig, loading)

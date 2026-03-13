@@ -8,6 +8,7 @@ export interface TestEnvConfig {
   licenseKey?: string;
   discountId?: string;
   webhookId?: string;
+  webhookUrl?: string;
   customerId?: string;
   orderItemId?: string;
 }

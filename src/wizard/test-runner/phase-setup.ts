@@ -60,19 +60,23 @@ export async function runPhaseSetup(
     } catch { /* empty */ }
   }
 
-  try {
-    const webhook = await loggedCall(
-      '1.6 createWebhook',
-      () =>
-        createWebhook(config.storeId, {
-          url: 'https://webhook.site/test',
-          events: ['order_created', 'subscription_created'],
-          secret: 'test-webhook-secret-123',
-        }),
-      loading
-    );
-    updates.webhookId = webhook.data?.data?.id;
-  } catch { /* empty */ }
+  if (config.webhookUrl) {
+    try {
+      const webhook = await loggedCall(
+        '1.6 createWebhook',
+        () =>
+          createWebhook(config.storeId, {
+            url: config.webhookUrl!,
+            events: ['order_created', 'subscription_created'],
+            secret: 'test-webhook-secret-123',
+          }),
+        loading
+      );
+      updates.webhookId = webhook.data?.data?.id;
+    } catch { /* empty */ }
+  } else {
+    console.log('[-] Skipping 1.6 createWebhook: no webhookUrl in config');
+  }
 
   try {
     const discount = await loggedCall(
