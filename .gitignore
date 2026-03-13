@@ -4,8 +4,9 @@ dist
 billing.log
 billing-cache.json
 .billing-cache.json
-agents.md
+AGENTS.
 agents
+docs
 
 # Dot-prefixed files and folders (keep .gitignore, .husky, .github)
 .*
@@ -14,6 +15,9 @@ agents
 !.husky/**
 !.github/
 !.github/**
+!.ls-changelog-state.md
 
 billing-config.ts
 test-workflows.sh
+pr-reviews
+scripts/scrape-pr-reviews.ts

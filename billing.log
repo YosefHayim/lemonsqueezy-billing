@@ -14,3 +14,5 @@
 {"ts":"2026-03-12T20:53:07.060Z","op":"createCheckout","status":"error","durationMs":716,"error":"Checkout failed: [object Object]"}
 {"ts":"2026-03-13T15:10:07.823Z","op":"bootstrap","status":"ok","durationMs":0,"input":{},"output":{}}
 {"ts":"2026-03-13T15:10:08.482Z","op":"createCheckout","status":"ok","durationMs":657,"input":{"variantId":"1385541","email":"te**@example.com","userId":"test-user-123"},"output":{"checkoutUrl":"https://store.yosefhayimsabag.com/checkout/custom/..."}}
+{"ts":"2026-03-13T17:40:34.356Z","op":"bootstrap","status":"ok","durationMs":0,"input":{},"output":{}}
+{"ts":"2026-03-13T17:40:34.899Z","op":"createCheckout","status":"ok","durationMs":542,"input":{"variantId":"1385541","email":"te**@example.com","userId":"test-user-123"},"output":{"checkoutUrl":"https://store.yosefhayimsabag.com/checkout/custom/..."}}

@@ -1,0 +1,58 @@
+name: Monitor LS Changelog
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run changelog scraper
+        id: scrape
+        continue-on-error: true
+        run: pnpm exec tsx scripts/monitor-ls-changelog.ts
+
+      - name: Warn on scraper failure
+        if: steps.scrape.outcome == 'failure'
+        run: |
+          echo "::warning::Changelog scraper failed — selectors may need updating. Check scripts/monitor-ls-changelog.ts."
+
+      - name: Get today's date
+        id: date
+        if: steps.scrape.outputs.changed == 'true'
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        if: steps.scrape.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/ls-changelog-${{ steps.date.outputs.today }}
+          commit-message: "chore: update LS changelog state"
+          title: "chore: Lemon Squeezy API changelog update (${{ steps.date.outputs.today }})"
+          body-path: LLM_TASK.md
+          labels: "changelog,automated"
+          delete-branch: true
