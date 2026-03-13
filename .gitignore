@@ -3,3 +3,10 @@ dist
 .env
 .billing-cache.json
 .cursorrules
+.kilocodemodes
+.clinerules
+.cursor
+.kilocode
+agents
+billing-config.ts
+test-workflows.sh

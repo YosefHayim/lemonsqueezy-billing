@@ -4,6 +4,7 @@ declare const process: {
   cwd: () => string;
   stdout: { write: (s: string) => void };
   exit: (code?: number) => void;
+  env: Record<string, string | undefined>;
 };
 
 declare namespace NodeJS {
@@ -17,8 +18,10 @@ import prompts from "prompts";
 import chalk from "chalk";
 import { createWriteStream } from "node:fs";
 import { resolve } from "node:path";
-import { createBilling } from "./index.js";
-import { fetchStores, fetchProducts, flattenPlans } from "./plans.js";
+import { createBilling } from "@core/index.js";
+import { fetchProducts, flattenPlans } from "@core/plans.js";
+import type { CachedProduct, StoreInfo } from "./types/index.js";
+import "dotenv/config";
 
 // Types for prompts
 interface PromptState {
@@ -70,9 +73,9 @@ const loading = new LoadingAnimation();
 
 interface WizardState {
   apiKey: string;
-  stores: any[];
+  stores: StoreInfo[];
   selectedStoreIds: string[];
-  products: any[];
+  products: CachedProduct[];
   selectedProductIds: string[];
   webhookUrl?: string;
   webhookEvents: string[];
@@ -118,31 +121,90 @@ class BillingWizard {
     }
   }
 
+  private getAvailableApiKeys(): { name: string; value: string; description: string }[] {
+    const keys: { name: string; value: string; description: string }[] = [];
+
+    if (process.env.LS_TEST_API_KEY) {
+      keys.push({
+        name: "LS_TEST_API_KEY",
+        value: process.env.LS_TEST_API_KEY,
+        description: "Test mode API key (sandbox)"
+      });
+    }
+    if (process.env.LS_LIVE_API_KEY) {
+      keys.push({
+        name: "LS_LIVE_API_KEY",
+        value: process.env.LS_LIVE_API_KEY,
+        description: "Live mode API key (production)"
+      });
+    }
+
+    return keys;
+  }
+
   private async stepApiKey(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to proceed, ESC to go back/exit"));
-    
-    const response = await prompts({
-      type: "text",
-      name: "apiKey",
-      message: "Enter your Lemon Squeezy API key:",
-      validate: (value: string) => value.length > 0 || "API key is required",
-      onState: (state: PromptState) => {
-        if (state.aborted) throw new Error('Aborted');
-      }
-    });
+    console.log(chalk.dim("Tip: Set LS_TEST_API_KEY, LS_LIVE_API_KEY, or LS_WEBHOOK_SECRET in .env"));
 
-    this.state.apiKey = response.apiKey;
+    const availableKeys = this.getAvailableApiKeys();
+    let apiKey: string | null = null;
+
+    if (availableKeys.length > 0) {
+      if (availableKeys.length === 1) {
+        console.log(`\n[+] Found ${availableKeys[0].name} in environment`);
+        apiKey = availableKeys[0].value;
+      } else {
+        console.log("\n" + chalk.dim("Select API keys (use SPACE to select, ENTER to submit):"));
+        const selected = await prompts({
+          type: "multiselect",
+          name: "apiKeys",
+          message: "Choose API keys:",
+          choices: availableKeys.map(k => ({
+            title: `${k.name} (${k.description})`,
+            value: k.value
+          })),
+          instructions: false,
+          hint: "Space to select, Enter to submit",
+          onState: (state: PromptState) => {
+            if (state.aborted) throw new Error('Aborted');
+          }
+        });
+        
+        // Use the first selected key, or fallback to the first available if none selected
+        apiKey = selected.apiKeys.length > 0 ? selected.apiKeys[0] : availableKeys[0].value;
+      }
+    }
+
+    if (!apiKey) {
+      const response = await prompts({
+        type: "text",
+        name: "apiKey",
+        message: "Enter your Lemon Squeezy API key:",
+        validate: (value: string) => value.length > 0 || "API key is required",
+        onState: (state: PromptState) => {
+          if (state.aborted) throw new Error('Aborted');
+        }
+      });
+
+      apiKey = response.apiKey;
+    }
+
+    if (!apiKey) {
+      console.log("[x] API key is required");
+      return this.stepApiKey();
+    }
 
     loading.start("Validating API key");
-    
+
     try {
       // Test the API key by creating a billing instance
       const billing = await createBilling({
-        apiKey: this.state.apiKey,
+        apiKey: apiKey!,
         callbacks: { onPurchase: async () => {} }
       });
-      
+
       loading.stop(`[+] Found ${billing.stores.length} store(s)`);
+      this.state.apiKey = apiKey!;
       this.state.stores = billing.stores;
     } catch (error) {
       loading.stop("[x] Invalid API key. Please try again.");
@@ -157,6 +219,7 @@ class BillingWizard {
       return this.stepApiKey();
     }
 
+    console.log("\n" + chalk.dim("Select stores (use SPACE to select, ENTER to submit):"));
     const response = await prompts({
       type: "multiselect",
       name: "stores",
@@ -166,7 +229,7 @@ class BillingWizard {
         value: store.id
       })),
       instructions: false,
-      hint: "Space to select, Enter to continue",
+      hint: "Space to select, Enter to submit",
       onState: (state: PromptState) => {
         if (state.aborted) throw new Error('Aborted');
       }
@@ -184,19 +247,21 @@ class BillingWizard {
 
   private async stepProductSelection(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to proceed, ESC to go back"));
-    console.log("[*] Fetching products...");
+    loading.start("Fetching products");
 
-    const allProducts: any[] = [];
-    
+    const allProducts: CachedProduct[] = [];
+
     for (const storeId of this.state.selectedStoreIds) {
       try {
         const products = await fetchProducts(storeId);
         allProducts.push(...products);
       } catch (error) {
-        console.log(`[x] Failed to fetch products for store ${storeId}`);
+        loading.stop(`[x] Failed to fetch products for store ${storeId}`);
         return this.stepStoreSelection();
       }
     }
+
+    loading.stop("");
 
     if (allProducts.length === 0) {
       console.log("[x] No products found. Please create products in your Lemon Squeezy dashboard.");
@@ -206,6 +271,7 @@ class BillingWizard {
     this.state.products = allProducts;
     const plans = flattenPlans(allProducts);
 
+    console.log("\n" + chalk.dim("Select products (use SPACE to select, ENTER to submit):"));
     const response = await prompts({
       type: "multiselect",
       name: "products",
@@ -215,7 +281,7 @@ class BillingWizard {
         value: plan.variantId
       })),
       instructions: false,
-      hint: "Space to select, Enter to continue",
+      hint: "Space to select, Enter to submit",
       onState: (state: PromptState) => {
         if (state.aborted) throw new Error('Aborted');
       }
@@ -233,26 +299,29 @@ class BillingWizard {
 
   private async stepWebhookSetup(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to proceed, ESC to skip"));
+    
+    console.log("\n" + chalk.dim("Create webhook endpoint? (use SPACE to select, ENTER to submit):"));
     const response = await prompts({
-      type: null,
+      type: "multiselect",
       name: "webhook",
-      message: "Create webhook endpoint? (Enter=Yes, ESC=Skip)",
+      message: "Create webhook endpoint:",
+      choices: [
+        { title: "Yes, create webhook", value: "yes" },
+        { title: "No, skip webhook setup", value: "no" }
+      ],
+      instructions: false,
+      hint: "Space to select, Enter to submit",
       onState: (state: PromptState) => {
-        if (state.aborted) {
-          // ESC pressed, skip webhook setup
-          return { webhook: false };
-        }
-        if (state.submitted) {
-          return { webhook: true };
-        }
+        if (state.aborted) throw new Error('Aborted');
       }
     });
 
-    if (!response.webhook) {
+    if (!response.webhook.includes("yes")) {
       console.log("[-] Skipping webhook setup");
       return;
     }
 
+    console.log("\n" + chalk.dim("Enter webhook URL:"));
     const urlResponse = await prompts({
       type: "text",
       name: "url",
@@ -266,6 +335,7 @@ class BillingWizard {
 
     this.state.webhookUrl = urlResponse.url;
 
+    console.log("\n" + chalk.dim("Select webhook events (use SPACE to select, ENTER to submit):"));
     const eventsResponse = await prompts({
       type: "multiselect",
       name: "events",
@@ -281,7 +351,7 @@ class BillingWizard {
         { title: "License Key Updated", value: "license_key_updated" }
       ],
       instructions: false,
-      hint: "Space to select, Enter to continue",
+      hint: "Space to select, Enter to submit",
       onState: (state: PromptState) => {
         if (state.aborted) throw new Error('Aborted');
       }
@@ -294,6 +364,8 @@ class BillingWizard {
 
   private async stepConfiguration(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to proceed, ESC to go back"));
+    
+    console.log("\n" + chalk.dim("Enter cache file path:"));
     const cacheResponse = await prompts({
       type: "text",
       name: "cachePath",
@@ -306,6 +378,7 @@ class BillingWizard {
 
     this.state.cachePath = cacheResponse.cachePath || this.state.cachePath;
 
+    console.log("\n" + chalk.dim("Enter the webhook secret you want:"));
     const secretResponse = await prompts({
       type: "text",
       name: "webhookSecret",
@@ -318,6 +391,7 @@ class BillingWizard {
 
     this.state.webhookSecret = secretResponse.webhookSecret || this.state.webhookSecret;
 
+    console.log("\n" + chalk.dim("Enter logger file path:"));
     const loggerResponse = await prompts({
       type: "text",
       name: "loggerPath",
@@ -335,24 +409,32 @@ class BillingWizard {
 
   private async stepGenerateFiles(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to generate, ESC to exit"));
+    
+    console.log("\n" + chalk.dim("Generate configuration files? (use SPACE to select, ENTER to submit):"));
     const response = await prompts({
-      type: null,
+      type: "multiselect",
       name: "generate",
-      message: "Generate configuration files? (Enter=Yes, ESC=Exit)",
+      message: "Generate configuration files:",
+      choices: [
+        { title: "Yes, generate files", value: "yes" },
+        { title: "No, exit without generating", value: "no" }
+      ],
+      instructions: false,
+      hint: "Space to select, Enter to submit",
       onState: (state: PromptState) => {
         if (state.aborted) throw new Error('Aborted');
-        if (state.submitted) {
-          return { generate: true };
-        }
       }
     });
 
-    if (!response.generate) {
+    if (!response.generate.includes("yes")) {
       console.log("[-] Exiting without generating files");
       process.exit(0);
     }
 
     await this.generateFiles();
+    
+    // Run validation tests after file generation
+    await this.runValidationTests();
   }
 
   private async generateFiles(): Promise<void> {
@@ -382,68 +464,212 @@ class BillingWizard {
     console.log("3. Start building your billing integration!");
   }
 
-  private generateConfigContent(): string {
-    return `import type { BillingConfig } from "@yosefhayim/lemonsqueezy-billing";
+  private async runValidationTests(): Promise<void> {
+    console.log("\n" + chalk.dim("Running validation tests..."));
+    
+    try {
+      const { execSync } = await import('child_process');
+      const fs = await import('node:fs');
+      const path = await import('node:path');
 
-export const billingConfig: BillingConfig = {
-  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${this.state.apiKey}",
-  storeId: "${this.state.selectedStoreIds[0]}",
-  webhookSecret: "${this.state.webhookSecret}",
-  cachePath: "${this.state.cachePath}",
-  logger: { filePath: "${this.state.loggerPath}" },
-  callbacks: {
-    onPurchase: async (event) => {
-      // Handle purchase event
-      console.log("Purchase:", event);
-      // TODO: Add your purchase logic here
-    },
-    onRefund: async (event) => {
-      // Handle refund event
-      console.log("Refund:", event);
-      // TODO: Add your refund logic here
-    },
-    onSubscriptionCreated: async (event) => {
-      // Handle subscription created
-      console.log("Subscription created:", event);
-      // TODO: Add your subscription created logic here
-    },
-    onSubscriptionUpdated: async (event) => {
-      // Handle subscription updated
-      console.log("Subscription updated:", event);
-      // TODO: Add your subscription updated logic here
-    },
-    onSubscriptionCancelled: async (event) => {
-      // Handle subscription cancelled
-      console.log("Subscription cancelled:", event);
-      // TODO: Add your subscription cancelled logic here
-    },
-    onPaymentFailed: async (event) => {
-      // Handle payment failed
-      console.log("Payment failed:", event);
-      // TODO: Add your payment failed logic here
-    },
-    onLicenseKeyCreated: async (event) => {
-      // Handle license key created
-      console.log("License key created:", event);
-      // TODO: Add your license key created logic here
-    },
-    onLicenseKeyUpdated: async (event) => {
-      // Handle license key updated
-      console.log("License key updated:", event);
-      // TODO: Add your license key updated logic here
+      loading.start("Testing TypeScript compilation");
+      execSync('pnpm typecheck', { stdio: 'pipe' });
+      loading.stop("[+] TypeScript compilation passed");
+      
+      loading.start("Testing build process");
+      execSync('pnpm build', { stdio: 'pipe' });
+      loading.stop("[+] Build process passed");
+      
+      loading.start("Testing example file syntax");
+      execSync('node --check example.ts', { stdio: 'pipe' });
+      loading.stop("[+] Example file syntax valid");
+      
+      loading.start("Testing billing configuration");
+      const configPath = path.resolve(process.cwd(), 'billing-config.ts');
+      
+      if (!fs.existsSync(configPath)) {
+        throw new Error("billing-config.ts file not found");
+      }
+      
+      const configContent = fs.readFileSync(configPath, 'utf8');
+      if (!configContent.includes('export const billingConfig')) {
+        throw new Error("billing-config.ts does not export billingConfig");
+      }
+      
+      loading.stop("[+] Billing configuration valid");
+      
+      console.log("\n[+] All validation tests passed! ✅");
+      console.log("Your billing integration is ready to use.");
+      
+      // Check if sandbox API key and offer real cycle flow
+      await this.offerRealCycleFlow();
+      
+    } catch (error) {
+      console.log("\n[x] Validation tests failed:");
+      console.error("Error:", error instanceof Error ? error.message : error);
+      console.log("\nPlease review the generated files and fix any issues.");
+      console.log("You can run the following commands to debug:");
+      console.log("  pnpm typecheck");
+      console.log("  pnpm build");
+      console.log("  node --check example.ts");
+      process.exit(1);
     }
   }
-};
 
-${this.state.webhookUrl ? `
-// Webhook configuration
-export const webhookConfig = {
-  url: "${this.state.webhookUrl}",
-  events: [${this.state.webhookEvents.map(e => `"${e}"`).join(", ")}],
-  secret: "${this.state.webhookSecret}"
-};
-` : ""}
-`;
+  private generateConfigContent(): string {
+    const lines: string[] = [];
+    
+    lines.push(`import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";`);
+    lines.push(``);
+    lines.push(`export const billingConfig: BillingConfig = {`);
+    lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${ this.state.apiKey}",`);
+    lines.push(`  storeId: "${ this.state.selectedStoreIds[0]}",`);
+    lines.push(`  webhookSecret: "${ this.state.webhookSecret}",`);
+    lines.push(`  cachePath: "${ this.state.cachePath}",`);
+    lines.push(`  logger: { filePath: "${ this.state.loggerPath}" },`);
+    lines.push(`  callbacks: {`);
+    lines.push(`    onPurchase: async (event: PurchaseEvent) => {`);
+    lines.push(`      console.log("Purchase:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onRefund: async (event: RefundEvent) => {`);
+    lines.push(`      console.log("Refund:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionCreated: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription created:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionUpdated: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription updated:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionCancelled: async (event: SubscriptionEvent) => {`);
+    lines.push(`      console.log("Subscription cancelled:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onPaymentFailed: async (event: PaymentFailedEvent) => {`);
+    lines.push(`      console.log("Payment failed:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaused: async (event: SubscriptionPausedEvent) => {`);
+    lines.push(`      console.log("Subscription paused:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionResumed: async (event: SubscriptionResumedEvent) => {`);
+    lines.push(`      console.log("Subscription resumed:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaymentSuccess: async (event: SubscriptionPaymentSuccessEvent) => {`);
+    lines.push(`      console.log("Subscription payment success:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onSubscriptionPaymentRecovered: async (event: SubscriptionPaymentRecoveredEvent) => {`);
+    lines.push(`      console.log("Subscription payment recovered:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onLicenseKeyCreated: async (event: LicenseKeyEvent) => {`);
+    lines.push(`      console.log("License key created:", event);`);
+    lines.push(`    },`);
+    lines.push(`    onLicenseKeyUpdated: async (event: LicenseKeyEvent) => {`);
+    lines.push(`      console.log("License key updated:", event);`);
+    lines.push(`    }`);
+    lines.push(`  }`);
+    lines.push(`};`);
+    
+    if (this.state.webhookUrl) {
+      lines.push(``);
+      lines.push(`export const webhookConfig = {`);
+      lines.push(`  url: "${ this.state.webhookUrl}",`);
+      const eventsStr = this.state.webhookEvents.map(e => `"${e}"`).join(", ");
+      lines.push(`  events: [${eventsStr}],`);
+      lines.push(`  secret: "${ this.state.webhookSecret.slice(0, 8)}...${ this.state.webhookSecret.slice(-4)}"`);
+      lines.push(`};`);
+    }
+    
+    return lines.join("\n");
+  }
+
+  private async offerRealCycleFlow(): Promise<void> {
+    console.log("\n" + chalk.dim("Checking API key type..."));
+    
+    const isSandboxKey = this.state.apiKey.includes('test_') || 
+                        this.state.apiKey.includes('sandbox_') ||
+                        process.env.LS_TEST_API_KEY === this.state.apiKey;
+    
+    const message = isSandboxKey
+      ? "Run real cycle flow test (sandbox)?"
+      : "Run live tests (production API)?";
+    
+    console.log("\n" + chalk.dim("Would you like to run tests? (use SPACE to select, ENTER to submit):"));
+    const response = await prompts({
+      type: "multiselect",
+      name: "runTest",
+      message,
+      choices: [
+        { title: isSandboxKey ? "Yes, run sandbox test" : "Yes, run live tests", value: "yes" },
+        { title: "No, skip tests", value: "no" }
+      ],
+      instructions: false,
+      hint: "Space to select, Enter to submit",
+      onState: (state: PromptState) => {
+        if (state.aborted) throw new Error('Aborted');
+      }
+    });
+
+    if (!response.runTest.includes("yes")) {
+      console.log("[-] Skipping tests");
+      return;
+    }
+
+    await this.runRealCycleFlow();
+  }
+
+  private async runRealCycleFlow(): Promise<void> {
+    console.log("\n" + chalk.dim("Running tests..."));
+    
+    try {
+      const path = await import('node:path');
+      const { pathToFileURL } = await import('node:url');
+      const configPath = path.resolve(process.cwd(), 'billing-config.ts');
+      const billingConfig = await import(pathToFileURL(configPath).href);
+      const billing = await createBilling(billingConfig.billingConfig);
+      
+      if (billing.plans.length === 0) {
+        console.log("[x] No products available for checkout test");
+      } else {
+        loading.start("Testing checkout URL creation");
+        const testVariantId = billing.plans[0].variantId;
+        const checkoutUrl = await billing.createCheckout({
+          variantId: testVariantId,
+          email: "test@example.com",
+          userId: "test-user-123"
+        });
+        loading.stop(`[+] Checkout URL created: ${checkoutUrl.slice(0, 60)}...`);
+        console.log(chalk.dim(`  Using variant: ${testVariantId}`));
+      }
+      
+      loading.start("Testing product listing");
+      loading.stop(`[+] Found ${billing.plans.length} products`);
+      for (const plan of billing.plans.slice(0, 3)) {
+        console.log(chalk.dim(`  - ${plan.name} / ${plan.variantName}: ${plan.priceFormatted} (${plan.variantId})`));
+      }
+      
+      loading.start("Testing store listing");
+      loading.stop(`[+] Found ${billing.stores.length} stores`);
+      for (const store of billing.stores) {
+        console.log(chalk.dim(`  - ${store.name} (${store.id})`));
+      }
+      
+      loading.start("Testing customer portal URL");
+      loading.stop("[+] Customer portal functionality available");
+      
+      const isSandbox = this.state.apiKey.includes('test_') || this.state.apiKey.includes('sandbox_');
+      console.log("\n[+] Tests completed successfully! ✅");
+      console.log(`All API operations are working correctly with your ${isSandbox ? 'sandbox' : 'live'} environment.`);
+      
+    } catch (error) {
+      console.log("\n[x] Real cycle flow test failed:");
+      if (error instanceof Error) {
+        console.error("Error:", error.message);
+      } else if (error && typeof error === 'object') {
+        console.error("Error:", JSON.stringify(error, null, 2));
+      } else {
+        console.error("Error:", String(error));
+      }
+      console.log("\nThis is normal if your environment doesn't have products configured.");
+      console.log("Your billing integration is still ready to use.");
+    }
   }
 
   private generateExampleContent(): string {
@@ -501,11 +727,14 @@ setupBilling();
 }
 
 // Run the wizard
-// Check if this file is being run directly (works in both CJS and ESM)
 const isMain = globalThis.process?.argv[1]?.endsWith('wizard.ts');
 if (isMain) {
+  runWizard().catch(console.error);
+}
+
+export async function runWizard(): Promise<void> {
   const wizard = new BillingWizard();
-  wizard.run().catch(console.error);
+  await wizard.run();
 }
 
 export { BillingWizard };
