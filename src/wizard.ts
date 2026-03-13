@@ -519,7 +519,7 @@ class BillingWizard {
   private generateConfigContent(): string {
     const lines: string[] = [];
     
-    lines.push(`import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";`);
+    lines.push(`import type { BillingConfig, PurchaseEvent, RefundEvent, AnySubscriptionEvent, SubscriptionMethod, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent, SubscriptionPaymentMethod, PaymentFailedEvent, LicenseKeyEvent, LicenseMethod } from "./types";`);
     lines.push(``);
     lines.push(`export const billingConfig: BillingConfig = {`);
     lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${ this.state.apiKey}",`);
@@ -543,11 +543,8 @@ class BillingWizard {
     lines.push(`    onPaymentFailed: async (event: PaymentFailedEvent) => {`);
     lines.push(`      console.log("Payment failed:", event);`);
     lines.push(`    },`);
-    lines.push(`    onLicenseKeyCreated: async (event: LicenseKeyEvent) => {`);
-    lines.push(`      console.log("License key created:", event);`);
-    lines.push(`    },`);
-    lines.push(`    onLicenseKeyUpdated: async (event: LicenseKeyEvent) => {`);
-    lines.push(`      console.log("License key updated:", event);`);
+    lines.push(`    onLicenseKey: async (method: LicenseMethod, event: LicenseKeyEvent) => {`);
+    lines.push(`      console.log("License key", method, event);`);
     lines.push(`    }`);
     lines.push(`  }`);
     lines.push(`};`);
