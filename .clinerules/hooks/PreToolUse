@@ -1,0 +1,66 @@
+#!/bin/bash
+
+input=$(cat)
+tool=$(echo "$input" | jq -r '.preToolUse.tool // empty')
+params=$(echo "$input" | jq -c '.preToolUse.parameters // {}')
+command=$(echo "$params" | jq -r '.command // .commandLine // empty')
+path=$(echo "$params" | jq -r '.path // empty')
+
+context_parts=()
+
+if [[ "$tool" == "execute_command" && -n "$command" ]]; then
+  if echo "$command" | grep -qE '\bgit\b'; then
+    if echo "$command" | grep -qiE 'git\s+push\s+.*--force.*\b(main|master)\b'; then
+      echo '{"cancel":true,"contextModification":"","errorMessage":"Force push to main/master blocked by safety hook"}'
+      exit 0
+    fi
+  fi
+
+  if echo "$command" | grep -qE 'rm\s+-rf\s+/'; then
+    echo '{"cancel":true,"contextModification":"","errorMessage":"Recursive delete from root blocked by safety hook"}'
+    exit 0
+  fi
+
+  if echo "$command" | grep -qE 'sudo\s+'; then
+    echo '{"cancel":true,"contextModification":"","errorMessage":"sudo commands blocked by safety hook"}'
+    exit 0
+  fi
+
+  if echo "$command" | grep -qE 'curl\s+.*\|\s*(bash|sh)\s*'; then
+    echo '{"cancel":true,"contextModification":"","errorMessage":"curl | bash patterns blocked by safety hook"}'
+    exit 0
+  fi
+
+  if echo "$command" | grep -qE '(npm|pnpm|yarn)\s+(install|add|i)\s+.*(https?://|git\+|github:)'; then
+    echo '{"cancel":true,"contextModification":"","errorMessage":"Package install from URL/git blocked by safety hook"}'
+    exit 0
+  fi
+fi
+
+if [[ "$tool" == "write_to_file" && -n "$path" ]]; then
+  if [[ "$path" == *.js ]]; then
+    echo '{"cancel":true,"contextModification":"","errorMessage":"Use .ts files instead of .js in this TypeScript project"}'
+    exit 0
+  fi
+
+  if [[ "$path" == *"/dist/"* || "$path" == *".generated."* || "$path" == *".generated"* ]]; then
+    context_parts+=("Note: This file is auto-generated. Edits may be overwritten.")
+  fi
+fi
+
+if [[ "$tool" == "read_file" && -n "$path" ]]; then
+  if [[ "$path" == *"/dist/"* || "$path" == *".generated."* || "$path" == *".generated"* ]]; then
+    context_parts+=("Note: This file is auto-generated. Edits may be overwritten.")
+  fi
+fi
+
+context_mod=""
+if [[ ${#context_parts[@]} -gt 0 ]]; then
+  context_mod=$(printf '%s\n' "${context_parts[@]}" | jq -Rs '.')
+fi
+
+if [[ -n "$context_mod" ]]; then
+  echo "{\"cancel\":false,\"contextModification\":$context_mod,\"errorMessage\":\"\"}"
+else
+  echo '{"cancel":false,"contextModification":"","errorMessage":""}'
+fi
