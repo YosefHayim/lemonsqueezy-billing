@@ -12,6 +12,17 @@ export interface LicenseKeyEvent {
   maxActivations: number;
 }
 
+export interface LicenseActivationResponse {
+  activated: boolean;
+  error: string | null;
+  instance?: { id: string; name: string };
+}
+
+export interface LicenseDeactivationResponse {
+  deactivated: boolean;
+  error: string | null;
+}
+
 export interface LemonSqueezyLicenseKeyAttributes {
   store_id: number;
   customer_id: number;

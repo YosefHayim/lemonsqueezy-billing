@@ -1,5 +1,11 @@
 import { getLicenseKey } from "@lemonsqueezy/lemonsqueezy.js";
-import type { LicenseKeyManagement, LicenseKeyEvent, LemonSqueezyLicenseKeyAttributes } from "../types/index.js";
+import type {
+  LicenseKeyManagement,
+  LicenseKeyEvent,
+  LemonSqueezyLicenseKeyAttributes,
+  LicenseActivationResponse,
+  LicenseDeactivationResponse,
+} from "../types/index.js";
 import { withRetry } from "./retry.js";
 
 function mapAttributesToLicenseKeyEvent(
@@ -70,29 +76,54 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
     );
   };
 
-  const activateLicense = async (key: string, _instanceId?: string): Promise<boolean> => {
-    // Note: Lemon Squeezy doesn't have a direct activation API
-    // This would typically be handled by your application logic
-    // based on the license key details and activation limits
-    
-    const validation = await validateLicense(key);
-    if (!validation.valid || !validation.details) {
+  const activateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
+    const instanceName = instanceId ?? "default";
+    const body = new URLSearchParams({ license_key: key, instance_name: instanceName });
+
+    try {
+      const response = await fetch("https://api.lemonsqueezy.com/v1/licenses/activate", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = (await response.json()) as LicenseActivationResponse;
+      return data.activated === true;
+    } catch {
       return false;
     }
-
-    // Here you would typically:
-    // 1. Check if this instanceId is already activated
-    // 2. Increment activation count in your database
-    // 3. Return success/failure based on your business logic
-    
-    return true; // Placeholder - implement based on your needs
   };
 
-  const deactivateLicense = async (_key: string, _instanceId?: string): Promise<boolean> => {
-    // Similar to activateLicense, this would be handled by your application logic
-    // based on your activation tracking system
-    
-    return true; // Placeholder - implement based on your needs
+  const deactivateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
+    const resolvedInstanceId = instanceId ?? "default";
+    const body = new URLSearchParams({ license_key: key, instance_id: resolvedInstanceId });
+
+    try {
+      const response = await fetch("https://api.lemonsqueezy.com/v1/licenses/deactivate", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = (await response.json()) as LicenseDeactivationResponse;
+      return data.deactivated === true;
+    } catch {
+      return false;
+    }
   };
 
   return {
