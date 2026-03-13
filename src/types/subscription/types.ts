@@ -55,3 +55,7 @@ export interface SubscriptionPaymentRecoveredEvent {
   orderId: string;
   amount: number;
 }
+
+export type SubscriptionPaymentMethod = 'success' | 'recovered';
+
+export type AnySubscriptionEvent = SubscriptionEvent | SubscriptionPausedEvent | SubscriptionResumedEvent;
