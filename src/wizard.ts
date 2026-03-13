@@ -20,6 +20,7 @@ import { createWriteStream } from "node:fs";
 import { resolve } from "node:path";
 import { createBilling } from "@core/index.js";
 import { fetchProducts, flattenPlans } from "@core/plans.js";
+import type { CachedProduct, StoreInfo } from "./types/index.js";
 import "dotenv/config";
 
 // Types for prompts
@@ -72,9 +73,9 @@ const loading = new LoadingAnimation();
 
 interface WizardState {
   apiKey: string;
-  stores: any[];
+  stores: StoreInfo[];
   selectedStoreIds: string[];
-  products: any[];
+  products: CachedProduct[];
   selectedProductIds: string[];
   webhookUrl?: string;
   webhookEvents: string[];
@@ -246,19 +247,21 @@ class BillingWizard {
 
   private async stepProductSelection(): Promise<void> {
     console.log("\n" + chalk.dim("Navigation: ENTER to proceed, ESC to go back"));
-    console.log("[*] Fetching products...");
+    loading.start("Fetching products");
 
-    const allProducts: any[] = [];
+    const allProducts: CachedProduct[] = [];
 
     for (const storeId of this.state.selectedStoreIds) {
       try {
         const products = await fetchProducts(storeId);
         allProducts.push(...products);
       } catch (error) {
-        console.log(`[x] Failed to fetch products for store ${storeId}`);
+        loading.stop(`[x] Failed to fetch products for store ${storeId}`);
         return this.stepStoreSelection();
       }
     }
+
+    loading.stop("");
 
     if (allProducts.length === 0) {
       console.log("[x] No products found. Please create products in your Lemon Squeezy dashboard.");
@@ -465,27 +468,23 @@ class BillingWizard {
     console.log("\n" + chalk.dim("Running validation tests..."));
     
     try {
-      // Test TypeScript compilation
-      console.log("[*] Testing TypeScript compilation...");
       const { execSync } = await import('child_process');
-      execSync('pnpm typecheck', { stdio: 'pipe' });
-      console.log("[+] TypeScript compilation passed");
-      
-      // Test build process
-      console.log("[*] Testing build process...");
-      execSync('pnpm build', { stdio: 'pipe' });
-      console.log("[+] Build process passed");
-      
-      // Test example file execution (syntax check)
-      console.log("[*] Testing example file syntax...");
-      execSync('node --check example.ts', { stdio: 'pipe' });
-      console.log("[+] Example file syntax valid");
-      
-      // Test billing configuration
-      console.log("[*] Testing billing configuration...");
-      // Check if billing-config.ts exists and has proper exports
       const fs = await import('node:fs');
       const path = await import('node:path');
+
+      loading.start("Testing TypeScript compilation");
+      execSync('pnpm typecheck', { stdio: 'pipe' });
+      loading.stop("[+] TypeScript compilation passed");
+      
+      loading.start("Testing build process");
+      execSync('pnpm build', { stdio: 'pipe' });
+      loading.stop("[+] Build process passed");
+      
+      loading.start("Testing example file syntax");
+      execSync('node --check example.ts', { stdio: 'pipe' });
+      loading.stop("[+] Example file syntax valid");
+      
+      loading.start("Testing billing configuration");
       const configPath = path.resolve(process.cwd(), 'billing-config.ts');
       
       if (!fs.existsSync(configPath)) {
@@ -497,7 +496,7 @@ class BillingWizard {
         throw new Error("billing-config.ts does not export billingConfig");
       }
       
-      console.log("[+] Billing configuration valid");
+      loading.stop("[+] Billing configuration valid");
       
       console.log("\n[+] All validation tests passed! ✅");
       console.log("Your billing integration is ready to use.");
@@ -584,26 +583,22 @@ class BillingWizard {
   private async offerRealCycleFlow(): Promise<void> {
     console.log("\n" + chalk.dim("Checking API key type..."));
     
-    // Check if this is a sandbox/test API key
     const isSandboxKey = this.state.apiKey.includes('test_') || 
                         this.state.apiKey.includes('sandbox_') ||
                         process.env.LS_TEST_API_KEY === this.state.apiKey;
     
-    if (!isSandboxKey) {
-      console.log("[-] Live API key detected. Skipping real cycle flow test.");
-      return;
-    }
+    const message = isSandboxKey
+      ? "Run real cycle flow test (sandbox)?"
+      : "Run live tests (production API)?";
     
-    console.log("[+] Sandbox API key detected!");
-    
-    console.log("\n" + chalk.dim("Would you like to run a real cycle flow test? (use SPACE to select, ENTER to submit):"));
+    console.log("\n" + chalk.dim("Would you like to run tests? (use SPACE to select, ENTER to submit):"));
     const response = await prompts({
       type: "multiselect",
       name: "runTest",
-      message: "Run real cycle flow test:",
+      message,
       choices: [
-        { title: "Yes, run test cycle", value: "yes" },
-        { title: "No, skip test", value: "no" }
+        { title: isSandboxKey ? "Yes, run sandbox test" : "Yes, run live tests", value: "yes" },
+        { title: "No, skip tests", value: "no" }
       ],
       instructions: false,
       hint: "Space to select, Enter to submit",
@@ -613,7 +608,7 @@ class BillingWizard {
     });
 
     if (!response.runTest.includes("yes")) {
-      console.log("[-] Skipping real cycle flow test");
+      console.log("[-] Skipping tests");
       return;
     }
 
@@ -621,49 +616,47 @@ class BillingWizard {
   }
 
   private async runRealCycleFlow(): Promise<void> {
-    console.log("\n" + chalk.dim("Running real cycle flow test..."));
+    console.log("\n" + chalk.dim("Running tests..."));
     
     try {
-      // Import the generated billing config
-      const billingConfig = await import('./billing-config.js');
+      const path = await import('node:path');
+      const { pathToFileURL } = await import('node:url');
+      const configPath = path.resolve(process.cwd(), 'billing-config.ts');
+      const billingConfig = await import(pathToFileURL(configPath).href);
       const billing = await createBilling(billingConfig.billingConfig);
       
-      console.log("[*] Testing checkout URL creation...");
-      
-      // Use actual variantId from billing.plans, not product ID
       if (billing.plans.length === 0) {
         console.log("[x] No products available for checkout test");
       } else {
+        loading.start("Testing checkout URL creation");
         const testVariantId = billing.plans[0].variantId;
-        console.log(chalk.dim(`  Using variant: ${testVariantId}`));
-        
         const checkoutUrl = await billing.createCheckout({
           variantId: testVariantId,
           email: "test@example.com",
           userId: "test-user-123"
         });
-        console.log(`[+] Checkout URL created: ${checkoutUrl.slice(0, 60)}...`);
+        loading.stop(`[+] Checkout URL created: ${checkoutUrl.slice(0, 60)}...`);
+        console.log(chalk.dim(`  Using variant: ${testVariantId}`));
       }
       
-      console.log("[*] Testing product listing...");
-      console.log(`[+] Found ${billing.plans.length} products`);
-      
+      loading.start("Testing product listing");
+      loading.stop(`[+] Found ${billing.plans.length} products`);
       for (const plan of billing.plans.slice(0, 3)) {
         console.log(chalk.dim(`  - ${plan.name} / ${plan.variantName}: ${plan.priceFormatted} (${plan.variantId})`));
       }
       
-      console.log("[*] Testing store listing...");
-      console.log(`[+] Found ${billing.stores.length} stores`);
-      
+      loading.start("Testing store listing");
+      loading.stop(`[+] Found ${billing.stores.length} stores`);
       for (const store of billing.stores) {
         console.log(chalk.dim(`  - ${store.name} (${store.id})`));
       }
       
-      console.log("[*] Testing customer portal URL...");
-      console.log("[+] Customer portal functionality available");
+      loading.start("Testing customer portal URL");
+      loading.stop("[+] Customer portal functionality available");
       
-      console.log("\n[+] Real cycle flow test completed successfully! ✅");
-      console.log("All API operations are working correctly with your sandbox environment.");
+      const isSandbox = this.state.apiKey.includes('test_') || this.state.apiKey.includes('sandbox_');
+      console.log("\n[+] Tests completed successfully! ✅");
+      console.log(`All API operations are working correctly with your ${isSandbox ? 'sandbox' : 'live'} environment.`);
       
     } catch (error) {
       console.log("\n[x] Real cycle flow test failed:");
@@ -674,7 +667,7 @@ class BillingWizard {
       } else {
         console.error("Error:", String(error));
       }
-      console.log("\nThis is normal if your sandbox environment doesn't have test products configured.");
+      console.log("\nThis is normal if your environment doesn't have products configured.");
       console.log("Your billing integration is still ready to use.");
     }
   }
