@@ -1,7 +1,19 @@
 node_modules
 dist
 .env
+billing.log
+billing-cache.json
 .billing-cache.json
-.cursorrules
-.kilocodemodes
+agents.md
+agents
+
+# Dot-prefixed files and folders (keep .gitignore, .husky, .github)
+.*
+!.gitignore
+!.husky/
+!.husky/**
+!.github/
+!.github/**
+
 billing-config.ts
+test-workflows.sh
