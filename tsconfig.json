@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,8 +13,25 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
+      "@cli/*": ["src/cli/*"],
+      "@types/*": ["src/types/*"],
+      "@utils/*": ["src/utils/*"],
+      "@skills/*": ["skills/*"],
+      "@wizard/*": ["skills/wizard/*"],
+      "@wizard/components/*": ["skills/wizard/components/*"],
+      "@wizard/steps/*": ["skills/wizard/steps/*"],
+      "@wizard/utils/*": ["skills/wizard/utils/*"],
+      "@cli/commands/*": ["skills/cli/commands/*"],
+      "@cli/utils/*": ["skills/cli/utils/*"],
+      "@validation/tests/*": ["skills/validation/tests/*"],
+      "@validation/utils/*": ["skills/validation/utils/*"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "skills/**/*"],
   "exclude": ["node_modules", "dist"]
 }
