@@ -1,0 +1,34 @@
+#!/bin/bash
+
+input=$(cat)
+
+workspace_root=$(echo "$input" | jq -r '.workspaceRoots[0] // empty')
+[ -z "$workspace_root" ] && workspace_root=$(cd "$(dirname "$0")/../.." && pwd)
+[ -z "$workspace_root" ] && workspace_root="$PWD"
+
+context_parts=()
+
+if [[ -f "$workspace_root/tsconfig.json" && -f "$workspace_root/package.json" ]]; then
+  if grep -q 'pnpm' "$workspace_root/package.json" 2>/dev/null || [[ -f "$workspace_root/pnpm-lock.yaml" ]]; then
+    context_parts+=("Project: TypeScript + pnpm. Use strict types, ESM, .js extensions in imports.")
+  elif grep -q 'yarn' "$workspace_root/package.json" 2>/dev/null || [[ -f "$workspace_root/yarn.lock" ]]; then
+    context_parts+=("Project: TypeScript + yarn. Use strict types, ESM, .js extensions in imports.")
+  elif [[ -f "$workspace_root/package-lock.json" ]]; then
+    context_parts+=("Project: TypeScript + npm. Use strict types, ESM, .js extensions in imports.")
+  else
+    context_parts+=("Project: TypeScript. Use strict types, ESM, .js extensions in imports.")
+  fi
+fi
+
+cursorrules_path="${workspace_root}/.cursorrules"
+if [[ -f "$cursorrules_path" ]]; then
+  content=$(cat "$cursorrules_path")
+  context_parts+=("$(echo "$content" | jq -Rsr '.')")
+fi
+
+context_modification=""
+if [[ ${#context_parts[@]} -gt 0 ]]; then
+  context_modification=$(printf '%s\n\n' "${context_parts[@]}" | jq -Rs '.')
+fi
+
+echo "{\"cancel\":false,\"contextModification\":${context_modification:-\"\"},\"errorMessage\":\"\"}"

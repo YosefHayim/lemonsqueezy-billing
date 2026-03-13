@@ -1,0 +1,11 @@
+#!/bin/bash
+
+input=$(cat)
+tool=$(echo "$input" | jq -r '.postToolUse.tool // empty')
+success=$(echo "$input" | jq -r '.postToolUse.success // empty')
+duration=$(echo "$input" | jq -r '.postToolUse.durationMs // empty')
+
+log_file="${HOME}/.cline-tool-log.txt"
+echo "$(date -Iseconds) | $tool | success=$success | ${duration}ms" >> "$log_file"
+
+echo '{"cancel":false,"contextModification":"","errorMessage":""}'

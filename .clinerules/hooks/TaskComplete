@@ -1,0 +1,33 @@
+#!/bin/bash
+
+input=$(cat)
+workspace_root=$(echo "$input" | jq -r '.workspaceRoots[0] // empty')
+[ -z "$workspace_root" ] && workspace_root=$(cd "$(dirname "$0")/../.." && pwd)
+[ -z "$workspace_root" ] && workspace_root="$PWD"
+
+if [[ ! -f "$workspace_root/package.json" ]]; then
+  echo '{"cancel":false,"contextModification":"","errorMessage":""}'
+  exit 0
+fi
+
+cd "$workspace_root" || exit 0
+
+if grep -q '"typecheck"' "$workspace_root/package.json" 2>/dev/null; then
+  if pnpm typecheck 2>/dev/null; then
+    :
+  else
+    echo '{"cancel":true,"contextModification":"","errorMessage":"pnpm typecheck failed. Fix type errors before considering the task complete."}'
+    exit 0
+  fi
+fi
+
+if grep -q '"build"' "$workspace_root/package.json" 2>/dev/null; then
+  if pnpm build 2>/dev/null; then
+    :
+  else
+    echo '{"cancel":true,"contextModification":"","errorMessage":"pnpm build failed. Fix build errors before considering the task complete."}'
+    exit 0
+  fi
+fi
+
+echo '{"cancel":false,"contextModification":"","errorMessage":""}'
