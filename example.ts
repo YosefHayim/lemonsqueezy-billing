@@ -15,7 +15,7 @@ async function setupBilling() {
     
     // Example: Create a checkout
     const checkoutUrl = await billing.createCheckout({
-      variantId: "1385541",
+      variantId: "1393711",
       email: "user@example.com",
       userId: "user-123"
     });

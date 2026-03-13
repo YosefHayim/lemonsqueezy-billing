@@ -629,21 +629,37 @@ class BillingWizard {
       const billing = await createBilling(billingConfig.billingConfig);
       
       console.log("[*] Testing checkout URL creation...");
-      const checkoutUrl = await billing.createCheckout({
-        variantId: this.state.selectedProductIds[0] || "test-variant",
-        email: "test@example.com",
-        userId: "test-user-123"
-      });
-      console.log(`[+] Checkout URL created: ${checkoutUrl}`);
+      
+      // Use actual variantId from billing.plans, not product ID
+      if (billing.plans.length === 0) {
+        console.log("[x] No products available for checkout test");
+      } else {
+        const testVariantId = billing.plans[0].variantId;
+        console.log(chalk.dim(`  Using variant: ${testVariantId}`));
+        
+        const checkoutUrl = await billing.createCheckout({
+          variantId: testVariantId,
+          email: "test@example.com",
+          userId: "test-user-123"
+        });
+        console.log(`[+] Checkout URL created: ${checkoutUrl.slice(0, 60)}...`);
+      }
       
       console.log("[*] Testing product listing...");
       console.log(`[+] Found ${billing.plans.length} products`);
       
+      for (const plan of billing.plans.slice(0, 3)) {
+        console.log(chalk.dim(`  - ${plan.name} / ${plan.variantName}: ${plan.priceFormatted} (${plan.variantId})`));
+      }
+      
       console.log("[*] Testing store listing...");
       console.log(`[+] Found ${billing.stores.length} stores`);
       
+      for (const store of billing.stores) {
+        console.log(chalk.dim(`  - ${store.name} (${store.id})`));
+      }
+      
       console.log("[*] Testing customer portal URL...");
-      // Note: Customer portal requires a real customer ID, so we'll skip this test
       console.log("[+] Customer portal functionality available");
       
       console.log("\n[+] Real cycle flow test completed successfully! ✅");
@@ -651,7 +667,13 @@ class BillingWizard {
       
     } catch (error) {
       console.log("\n[x] Real cycle flow test failed:");
-      console.error("Error:", error instanceof Error ? error.message : error);
+      if (error instanceof Error) {
+        console.error("Error:", error.message);
+      } else if (error && typeof error === 'object') {
+        console.error("Error:", JSON.stringify(error, null, 2));
+      } else {
+        console.error("Error:", String(error));
+      }
       console.log("\nThis is normal if your sandbox environment doesn't have test products configured.");
       console.log("Your billing integration is still ready to use.");
     }

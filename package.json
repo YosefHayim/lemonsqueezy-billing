@@ -1,6 +1,6 @@
 {
   "name": "lemonsqueezy-billing",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
   "homepage": "https://github.com/yosefhayim/lemonsqueezy-billing#readme",
@@ -28,15 +28,15 @@
   "sideEffects": false,
   "llms": "https://raw.githubusercontent.com/yosefhayim/lemonsqueezy-billing/main/llms.txt",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/core/index.js",
+  "types": "dist/src/core/index.d.ts",
   "bin": {
-    "lemonsqueezy-billing": "dist/cli.js"
+    "lemonsqueezy-billing": "dist/src/cli/cli.js"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/src/core/index.d.ts",
+      "import": "./dist/src/core/index.js"
     }
   },
   "files": [

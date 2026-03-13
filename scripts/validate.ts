@@ -1,4 +1,4 @@
-import { createBilling } from "../dist/index.js";
+import { createBilling } from "../dist/src/core/index.js";
 import { createHmac } from "node:crypto";
 import { readFileSync, unlinkSync, existsSync } from "node:fs";
 
@@ -7,8 +7,8 @@ const WEBHOOK_SECRET = process.env.LS_WEBHOOK_SECRET ?? "test-webhook-secret";
 const CACHE_PATH = "/tmp/lemonsqueezy-billing-validate-cache.json";
 const LOG_PATH = "/tmp/lemonsqueezy-billing-validate.log";
 
-function pass(label: string) { console.log(`  \u2705 ${label}`); }
-function fail(label: string, error: string) { console.log(`  \u274c ${label}: ${error}`); }
+function pass(label: string) { console.log(`  ✅ ${label}`); }
+function fail(label: string, error: string) { console.log(`  ❌ ${label}: ${error}`); }
 
 function cleanup() {
   try { unlinkSync(CACHE_PATH); } catch {}
@@ -16,12 +16,12 @@ function cleanup() {
 }
 
 async function validateOffline() {
-  console.log("\n\ud83d\udce6 Offline Validation (no API key needed)\n");
+  console.log("\n📦 Offline Validation (no API key needed)\n");
 
-  const { readCache, writeCache, isCacheValid } = await import("../dist/cache.js");
-  const { createWebhookVerifier, createWebhookHandler } = await import("../dist/webhook.js");
-  const { createLogger, withLogger } = await import("../dist/logger.js");
-  const { withRetry } = await import("../dist/retry.js");
+  const { readCache, writeCache, isCacheValid } = await import("../dist/src/core/cache.js");
+  const { createWebhookVerifier, createWebhookHandler } = await import("../dist/src/core/webhook.js");
+  const { createLogger, withLogger } = await import("../dist/src/core/logger.js");
+  const { withRetry } = await import("../dist/src/core/retry.js");
 
   const testCache = {
     generatedAt: new Date().toISOString(),
