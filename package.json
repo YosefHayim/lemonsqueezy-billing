@@ -1,6 +1,6 @@
 {
   "name": "lemonsqueezy-billing",
-  "version": "1.0.9",
+  "version": "1.0.11",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
   "homepage": "https://github.com/yosefhayim/lemonsqueezy-billing#readme",
