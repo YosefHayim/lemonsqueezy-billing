@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { banner } from './components/banner.js';
 import { LoadingAnimation } from './components/loading.js';
 import { stepApiKey } from './steps/api-key.js';
@@ -23,7 +24,7 @@ function isExitPromptError(error: unknown): boolean {
 }
 
 function generateSecret(): string {
-  return 'ls_'.concat(Math.random().toString(36).slice(2, 15));
+  return 'ls_'.concat(randomBytes(18).toString('hex'));
 }
 
 export async function runWizard(): Promise<void> {
@@ -34,6 +35,11 @@ export async function runWizard(): Promise<void> {
     const { apiKey, isSandbox, stores } = await stepApiKey(loading);
 
     const selectedStoreIds = await stepStoreSelection(stores);
+
+    if (selectedStoreIds.length === 0) {
+      console.log('[x] No stores selected. Wizard cannot continue.');
+      process.exit(1);
+    }
 
     const { products, selectedProductIds } = await stepProductSelection(selectedStoreIds, loading);
 
@@ -68,17 +74,21 @@ export async function runWizard(): Promise<void> {
     });
 
     if (runTests) {
-      const config: TestEnvConfig = {
-        isSandbox,
-        apiKey,
-        storeId: selectedStoreIds[0] ?? '',
-        variantId: selectedProductIds[0],
-        orderId: process.env['LS_TEST_ORDER_ID'],
-        subscriptionId: process.env['LS_TEST_SUBSCRIPTION_ID'],
-        licenseKey: process.env['LS_TEST_LICENSE_KEY'],
-      };
-
-      await runAllPhases(config, loading);
+      const variantId = selectedProductIds[0];
+      if (!variantId) {
+        console.log('[-] Skipping lifecycle tests: no product variant selected.');
+      } else {
+        const config: TestEnvConfig = {
+          isSandbox,
+          apiKey,
+          storeId: selectedStoreIds[0] ?? '',
+          variantId,
+          orderId: process.env['LS_TEST_ORDER_ID'],
+          subscriptionId: process.env['LS_TEST_SUBSCRIPTION_ID'],
+          licenseKey: process.env['LS_TEST_LICENSE_KEY'],
+        };
+        await runAllPhases(config, loading);
+      }
     }
 
     console.log('\n[+] Wizard complete!');

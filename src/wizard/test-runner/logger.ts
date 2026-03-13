@@ -15,7 +15,9 @@ export async function loggedCall<T>(
     loading.stop(`[x] ${label} failed`);
     console.log(
       JSON.stringify(
-        error instanceof Error ? { message: error.message } : error,
+        error instanceof Error
+          ? { message: error.message, stack: error.stack, name: error.name }
+          : error,
         null,
         2
       )

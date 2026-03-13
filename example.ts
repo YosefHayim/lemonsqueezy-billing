@@ -1,7 +1,6 @@
 import express from "express";
 import { createBilling } from "@yosefhayim/lemonsqueezy-billing";
 import { billingConfig } from "./billing-config";
-import type { AnySubscriptionEvent, SubscriptionMethod, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent, SubscriptionPaymentMethod } from "@yosefhayim/lemonsqueezy-billing";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,7 +13,10 @@ async function setupBilling() {
     console.log("Available stores:", billing.stores.map(s => s.name));
     console.log("Available plans:", billing.plans.length);
 
-    const variantId = billing.plans[0]?.variantId ?? "your-variant-id";
+    const variantId = billing.plans[0]?.variantId;
+    if (!variantId) {
+      throw new Error("No billing plans found. Publish at least one variant in your Lemon Squeezy dashboard.");
+    }
 
     const checkoutUrl = await billing.createCheckout({
       variantId,

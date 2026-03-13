@@ -28,6 +28,9 @@ async function setupBilling() {
 
     app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
       const signature = req.headers["x-signature"] as string;
+      if (!req.body || !signature) {
+        return res.status(400).send("Missing body or signature");
+      }
       const rawBody = req.body.toString();
 
       if (!billing.verifyWebhook(rawBody, signature)) {

@@ -52,7 +52,7 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
       );
 
       const valid = details.status === "active" &&
-                   (details.maxActivations === null || details.activationCount < details.maxActivations);
+                   (details.maxActivations === null || details.activationCount <= details.maxActivations);
 
       return { valid, details };
     } catch {
@@ -109,8 +109,10 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
   };
 
   const deactivateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
-    const resolvedInstanceId = instanceId ?? "default";
-    const body = new URLSearchParams({ license_key: key, instance_id: resolvedInstanceId });
+    if (!instanceId) {
+      return false;
+    }
+    const body = new URLSearchParams({ license_key: key, instance_id: instanceId });
 
     try {
       const response = await fetch(`${LS_LICENSE_API_BASE}/deactivate`, {

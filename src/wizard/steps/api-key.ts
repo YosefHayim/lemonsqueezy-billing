@@ -1,7 +1,7 @@
 import { createBilling } from '@core/index.js';
 import type { StoreInfo } from '../../types/index.js';
 import { LoadingAnimation } from '../components/loading.js';
-import { input, checkbox } from '@inquirer/prompts';
+import { input, select } from '@inquirer/prompts';
 import 'dotenv/config';
 
 declare const process: {
@@ -56,16 +56,13 @@ export async function stepApiKey(
       apiKey = availableKeys[0].value;
       isSandbox = availableKeys[0].isSandbox;
     } else if (availableKeys.length > 1) {
-      const selected = await checkbox({
+      const chosenName = await select({
         message: 'Choose API key:',
-        choices: availableKeys.map((k, i) => ({
+        choices: availableKeys.map((k) => ({
           name: `${k.label} (${k.envName})`,
           value: k.envName,
-          checked: i === 0,
         })),
       });
-
-      const chosenName = selected[0] ?? availableKeys[0].envName;
       const chosen = availableKeys.find((k) => k.envName === chosenName) ?? availableKeys[0];
       apiKey = chosen.value;
       isSandbox = chosen.isSandbox;
@@ -95,7 +92,23 @@ export async function stepApiKey(
     if (isExitPromptError(error)) {
       process.exit(0);
     }
-    loading.stop('[x] Invalid API key. Please try again.');
-    return stepApiKey(loading);
+    loading.stop('[x] API key validation failed.');
+    const manualKey = await input({ message: 'Enter a valid API key:' });
+    if (!manualKey) {
+      console.log('[x] API key is required');
+      process.exit(1);
+    }
+    loading.start('Validating API key');
+    try {
+      const billing = await createBilling({
+        apiKey: manualKey,
+        callbacks: { onPurchase: async () => {} },
+      });
+      loading.stop(`[+] Found ${billing.stores.length} store(s)`);
+      return { apiKey: manualKey, isSandbox: false, stores: billing.stores };
+    } catch {
+      loading.stop('[x] Invalid API key');
+      throw new Error('API key validation failed');
+    }
   }
 }

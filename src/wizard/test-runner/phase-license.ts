@@ -18,7 +18,11 @@ export async function runPhaseLicense(
   try {
     await loggedCall(
       '5.1 getLicenseDetails',
-      () => lkm.getLicenseDetails(licenseKey),
+      async () => {
+        const result = await lkm.getLicenseDetails(licenseKey);
+        if (!result) throw new Error('License details returned null');
+        return result;
+      },
       loading
     );
   } catch { /* empty */ }
@@ -26,7 +30,11 @@ export async function runPhaseLicense(
   try {
     await loggedCall(
       '5.2 activateLicense',
-      () => lkm.activateLicense(licenseKey, 'wizard-test-instance'),
+      async () => {
+        const result = await lkm.activateLicense(licenseKey, 'wizard-test-instance');
+        if (!result) throw new Error('License activation returned false');
+        return result;
+      },
       loading
     );
   } catch { /* empty */ }
@@ -34,7 +42,11 @@ export async function runPhaseLicense(
   try {
     await loggedCall(
       '5.3 validateLicense',
-      () => lkm.validateLicense(licenseKey),
+      async () => {
+        const result = await lkm.validateLicense(licenseKey);
+        if (!result.valid) throw new Error('License validation returned invalid');
+        return result;
+      },
       loading
     );
   } catch { /* empty */ }

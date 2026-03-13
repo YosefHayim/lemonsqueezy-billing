@@ -1,4 +1,4 @@
-import { createWriteStream } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { WizardState } from '../state.js';
 import { generateConfigContent } from '../utils/config-content.js';
@@ -37,13 +37,10 @@ export async function stepGenerateFiles(
     const configPath = resolve(process.cwd(), 'billing-config.ts');
     const examplePath = resolve(process.cwd(), 'example.ts');
 
-    const configStream = createWriteStream(configPath);
-    configStream.write(configContent);
-    configStream.end();
-
-    const exampleStream = createWriteStream(examplePath);
-    exampleStream.write(exampleContent);
-    exampleStream.end();
+    await Promise.all([
+      writeFile(configPath, configContent, 'utf8'),
+      writeFile(examplePath, exampleContent, 'utf8'),
+    ]);
 
     console.log('\n[+] Files generated successfully!');
     console.log(`    ${configPath}`);
@@ -51,7 +48,7 @@ export async function stepGenerateFiles(
 
     console.log('\nNext steps:');
     console.log('1. Review the generated files');
-    console.log('2. Run: node example.ts');
+    console.log('2. Run: npx tsx example.ts');
     console.log('3. Start building your billing integration!');
 
     await runValidationTests(loading);

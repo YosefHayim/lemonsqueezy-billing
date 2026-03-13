@@ -38,23 +38,30 @@ export async function stepProductSelection(
 
   const plans = flattenPlans(allProducts);
 
+  if (plans.length === 0) {
+    console.log('[x] No product variants found. Create at least one product variant in your Lemon Squeezy dashboard.');
+    return { products: allProducts, selectedProductIds: [] };
+  }
+
   try {
-    const selectedProductIds = await checkbox({
-      message: 'Select products to include:',
-      choices: plans.map((plan, i) => ({
-        name: `${plan.name} - ${plan.variantName} (${plan.priceFormatted})`,
-        value: plan.variantId,
-        checked: i === 0,
-      })),
-    });
+    while (true) {
+      const selectedProductIds = await checkbox({
+        message: 'Select products to include:',
+        choices: plans.map((plan, i) => ({
+          name: `${plan.name} - ${plan.variantName} (${plan.priceFormatted})`,
+          value: plan.variantId,
+          checked: i === 0,
+        })),
+      });
 
-    if (selectedProductIds.length === 0) {
-      console.log('[x] Please select at least one product');
-      return stepProductSelection(selectedStoreIds, loading);
+      if (selectedProductIds.length === 0) {
+        console.log('[x] Please select at least one product');
+        continue;
+      }
+
+      console.log(`[+] Selected ${selectedProductIds.length} product(s)`);
+      return { products: allProducts, selectedProductIds };
     }
-
-    console.log(`[+] Selected ${selectedProductIds.length} product(s)`);
-    return { products: allProducts, selectedProductIds };
   } catch (error) {
     if (isExitPromptError(error)) {
       process.exit(0);
