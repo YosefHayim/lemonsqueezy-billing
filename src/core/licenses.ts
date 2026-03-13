@@ -8,6 +8,8 @@ import type {
 } from "../types/index.js";
 import { withRetry } from "./retry.js";
 
+const LS_LICENSE_API_BASE = "https://api.lemonsqueezy.com/v1/licenses";
+
 function mapAttributesToLicenseKeyEvent(
   attrs: LemonSqueezyLicenseKeyAttributes,
   licenseKeyId: string,
@@ -49,8 +51,8 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
         attrs.key
       );
 
-      const valid = details.status === "active" && 
-                   details.activationCount < details.maxActivations;
+      const valid = details.status === "active" &&
+                   (details.maxActivations === null || details.activationCount < details.maxActivations);
 
       return { valid, details };
     } catch {
@@ -59,29 +61,34 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
   };
 
   const getLicenseDetails = async (key: string): Promise<LicenseKeyEvent | null> => {
-    const response = await withRetry(
-      () => getLicenseKey(key),
-      "getLicenseKey"
-    );
+    try {
+      const response = await withRetry(
+        () => getLicenseKey(key),
+        "getLicenseKey"
+      );
 
-    if (response.error || !response.data?.data) {
+      if (response.error || !response.data?.data) {
+        return null;
+      }
+
+      const attrs = response.data.data.attributes as LemonSqueezyLicenseKeyAttributes;
+      return mapAttributesToLicenseKeyEvent(
+        attrs,
+        response.data.data.id,
+        attrs.key
+      );
+    } catch {
       return null;
     }
-
-    const attrs = response.data.data.attributes as LemonSqueezyLicenseKeyAttributes;
-    return mapAttributesToLicenseKeyEvent(
-      attrs,
-      response.data.data.id,
-      attrs.key
-    );
   };
 
+  // Note: License API is a direct HTTP call; retries are intentionally omitted (callers should retry at the application level)
   const activateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
     const instanceName = instanceId ?? "default";
     const body = new URLSearchParams({ license_key: key, instance_name: instanceName });
 
     try {
-      const response = await fetch("https://api.lemonsqueezy.com/v1/licenses/activate", {
+      const response = await fetch(`${LS_LICENSE_API_BASE}/activate`, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -106,7 +113,7 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
     const body = new URLSearchParams({ license_key: key, instance_id: resolvedInstanceId });
 
     try {
-      const response = await fetch("https://api.lemonsqueezy.com/v1/licenses/deactivate", {
+      const response = await fetch(`${LS_LICENSE_API_BASE}/deactivate`, {
         method: "POST",
         headers: {
           Accept: "application/json",
