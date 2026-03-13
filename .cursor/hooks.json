@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": ".cursor/hooks/session-init.sh" }],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/block-dangerous.sh",
+        "matcher": "rm -rf|rm -r |curl |wget |nc "
+      }
+    ],
+    "afterFileEdit": [{ "command": ".cursor/hooks/format.sh" }]
+  }
+}
