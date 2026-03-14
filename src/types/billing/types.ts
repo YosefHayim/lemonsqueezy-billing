@@ -5,7 +5,10 @@ import type {
   SubscriptionPausedEvent,
   SubscriptionResumedEvent,
   SubscriptionPaymentSuccessEvent,
-  SubscriptionPaymentRecoveredEvent 
+  SubscriptionPaymentRecoveredEvent,
+  SubscriptionMethod,
+  SubscriptionPaymentMethod,
+  AnySubscriptionEvent,
 } from '../subscription/types.js';
 import type { WebhookMethod, WebhookPayload } from '../webhook/types.js';
 
@@ -39,15 +42,9 @@ export type WebhookEvent =
 export interface BillingCallbacks {
   onPurchase: (event: PurchaseEvent) => Promise<void>;
   onRefund?: (event: RefundEvent) => Promise<void>;
-  onSubscriptionCreated?: (event: SubscriptionEvent) => Promise<void>;
-  onSubscriptionUpdated?: (event: SubscriptionEvent) => Promise<void>;
-  onSubscriptionCancelled?: (event: SubscriptionEvent) => Promise<void>;
-  onSubscriptionExpired?: (event: SubscriptionEvent) => Promise<void>;
+  onSubscription?: (event: AnySubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
+  onSubscriptionPayment?: (event: SubscriptionPaymentSuccessEvent | SubscriptionPaymentRecoveredEvent, method: SubscriptionPaymentMethod) => Promise<void>;
   onPaymentFailed?: (event: PaymentFailedEvent) => Promise<void>;
-  onSubscriptionPaused?: (event: SubscriptionPausedEvent) => Promise<void>;
-  onSubscriptionResumed?: (event: SubscriptionResumedEvent) => Promise<void>;
-  onSubscriptionPaymentSuccess?: (event: SubscriptionPaymentSuccessEvent) => Promise<void>;
-  onSubscriptionPaymentRecovered?: (event: SubscriptionPaymentRecoveredEvent) => Promise<void>;
   onLicenseKey?: (method: LicenseMethod, event: LicenseKeyEvent) => Promise<void>;
   onWebhook?: (eventType: WebhookMethod, event: WebhookEvent) => Promise<void>;
 }

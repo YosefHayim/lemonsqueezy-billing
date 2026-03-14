@@ -9,7 +9,18 @@ export interface LicenseKeyEvent {
   variantId: string;
   status: string;
   activationCount: number;
-  maxActivations: number;
+  maxActivations: number | null;
+}
+
+export interface LicenseActivationResponse {
+  activated: boolean;
+  error: string | null;
+  instance?: { id: string; name: string };
+}
+
+export interface LicenseDeactivationResponse {
+  deactivated: boolean;
+  error: string | null;
 }
 
 export interface LemonSqueezyLicenseKeyAttributes {
@@ -22,7 +33,7 @@ export interface LemonSqueezyLicenseKeyAttributes {
   user_email: string;
   key: string;
   key_short: string;
-  activation_limit: number;
+  activation_limit: number | null;
   instances_count: number;
   disabled: number;
   status: string;

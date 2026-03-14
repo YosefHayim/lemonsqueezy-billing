@@ -1,0 +1,56 @@
+import type { WizardState } from '../state.js';
+
+export function generateConfigContent(state: WizardState): string {
+  const lines: string[] = [];
+
+  lines.push(
+    'import type { BillingConfig, PurchaseEvent, RefundEvent, AnySubscriptionEvent, SubscriptionMethod, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent, SubscriptionPaymentMethod, PaymentFailedEvent, LicenseKeyEvent, LicenseMethod } from "./types";'
+  );
+  lines.push('');
+  lines.push('export const billingConfig: BillingConfig = {');
+  const envKey = state.isSandbox ? 'LS_TEST_API_KEY' : 'LS_LIVE_API_KEY';
+  lines.push(`  apiKey: process.env.${envKey} || ${JSON.stringify(state.apiKey)},`);
+  lines.push(`  storeId: ${JSON.stringify(state.selectedStoreIds[0])},`);
+  lines.push(`  webhookSecret: ${JSON.stringify(state.webhookSecret)},`);
+  lines.push(`  cachePath: ${JSON.stringify(state.cachePath)},`);
+  lines.push(`  logger: { filePath: ${JSON.stringify(state.loggerPath)} },`);
+  lines.push('  callbacks: {');
+  lines.push('    onPurchase: async (event: PurchaseEvent) => {');
+  lines.push('      console.log("Purchase:", event);');
+  lines.push('    },');
+  lines.push('    onRefund: async (event: RefundEvent) => {');
+  lines.push('      console.log("Refund:", event);');
+  lines.push('    },');
+  lines.push(
+    '    onSubscription: async (event: AnySubscriptionEvent, method: SubscriptionMethod) => {'
+  );
+  lines.push('      console.log("Subscription", method, event);');
+  lines.push('    },');
+  lines.push(
+    '    onSubscriptionPayment: async (event: SubscriptionPaymentSuccessEvent | SubscriptionPaymentRecoveredEvent, method: SubscriptionPaymentMethod) => {'
+  );
+  lines.push('      console.log("Payment", method, event);');
+  lines.push('    },');
+  lines.push('    onPaymentFailed: async (event: PaymentFailedEvent) => {');
+  lines.push('      console.log("Payment failed:", event);');
+  lines.push('    },');
+  lines.push('    onLicenseKey: async (method: LicenseMethod, event: LicenseKeyEvent) => {');
+  lines.push('      console.log("License key", method, event);');
+  lines.push('    },');
+  lines.push('  },');
+  lines.push('};');
+
+  if (state.webhookUrl) {
+    lines.push('');
+    lines.push('export const webhookConfig = {');
+    lines.push(`  url: ${JSON.stringify(state.webhookUrl)},`);
+    const eventsStr = state.webhookEvents.map((e) => `"${e}"`).join(', ');
+    lines.push(`  events: [${eventsStr}],`);
+    lines.push(
+      `  secret: ${JSON.stringify(state.webhookSecret.slice(0, 8) + '...' + state.webhookSecret.slice(-4))},`
+    );
+    lines.push('};');
+  }
+
+  return lines.join('\n');
+}

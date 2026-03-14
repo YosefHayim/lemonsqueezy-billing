@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { runWizard } from "../wizard.js";
+import { runWizard } from "../wizard/index.js";
 import { runValidate } from "./cli-validate.js";
 
 type Command = "wizard" | "validate" | "help";
