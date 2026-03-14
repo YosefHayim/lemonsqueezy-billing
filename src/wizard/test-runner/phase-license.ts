@@ -27,12 +27,15 @@ export async function runPhaseLicense(
     );
   } catch { /* empty */ }
 
+  let activatedInstanceId: string | undefined;
+
   try {
     await loggedCall(
       '5.2 activateLicense',
       async () => {
         const result = await lkm.activateLicense(licenseKey, 'wizard-test-instance');
-        if (!result) throw new Error('License activation returned false');
+        if (!result.activated) throw new Error('License activation returned false');
+        activatedInstanceId = result.instanceId;
         return result;
       },
       loading
@@ -54,7 +57,14 @@ export async function runPhaseLicense(
   try {
     await loggedCall(
       '5.4 deactivateLicense',
-      () => lkm.deactivateLicense(licenseKey, 'wizard-test-instance'),
+      async () => {
+        if (!activatedInstanceId) {
+          throw new Error('No instanceId from activation — skipping deactivation');
+        }
+        const result = await lkm.deactivateLicense(licenseKey, activatedInstanceId);
+        if (!result) throw new Error('License deactivation returned false');
+        return result;
+      },
       loading
     );
   } catch { /* empty */ }

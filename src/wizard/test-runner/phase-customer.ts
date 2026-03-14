@@ -75,8 +75,9 @@ export async function runPhaseCustomer(
             message: 'Enter the Order ID from the completed checkout (leave blank to skip):',
             default: '',
           });
-          if (enteredOrderId) {
-            updates.orderId = enteredOrderId;
+          const trimmedOrderId = enteredOrderId.trim();
+          if (trimmedOrderId) {
+            updates.orderId = trimmedOrderId;
           }
         }
       } catch { /* empty */ }

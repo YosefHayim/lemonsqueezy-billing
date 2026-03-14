@@ -83,9 +83,9 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
   };
 
   // Note: License API is a direct HTTP call; retries are intentionally omitted (callers should retry at the application level)
-  const activateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
-    const instanceName = instanceId ?? "default";
-    const body = new URLSearchParams({ license_key: key, instance_name: instanceName });
+  const activateLicense = async (key: string, instanceName?: string): Promise<{ activated: boolean; instanceId?: string }> => {
+    const resolvedName = instanceName ?? "default";
+    const body = new URLSearchParams({ license_key: key, instance_name: resolvedName });
 
     try {
       const response = await fetch(`${LS_LICENSE_API_BASE}/activate`, {
@@ -98,13 +98,13 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
       });
 
       if (!response.ok) {
-        return false;
+        return { activated: false };
       }
 
       const data = (await response.json()) as LicenseActivationResponse;
-      return data.activated === true;
+      return { activated: data.activated === true, instanceId: data.instance?.id };
     } catch {
-      return false;
+      return { activated: false };
     }
   };
 

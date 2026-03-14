@@ -8,7 +8,8 @@ export function generateConfigContent(state: WizardState): string {
   );
   lines.push('');
   lines.push('export const billingConfig: BillingConfig = {');
-  lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY || ${JSON.stringify(state.apiKey)},`);
+  const envKey = state.isSandbox ? 'LS_TEST_API_KEY' : 'LS_LIVE_API_KEY';
+  lines.push(`  apiKey: process.env.${envKey} || ${JSON.stringify(state.apiKey)},`);
   lines.push(`  storeId: ${JSON.stringify(state.selectedStoreIds[0])},`);
   lines.push(`  webhookSecret: ${JSON.stringify(state.webhookSecret)},`);
   lines.push(`  cachePath: ${JSON.stringify(state.cachePath)},`);
