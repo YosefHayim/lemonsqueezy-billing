@@ -21,5 +21,3 @@ scripts/ls-changelog/changelog/
 
 
 test-workflows.sh
-pr-reviews
-scripts/scrape-pr-reviews.ts
