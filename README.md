@@ -1,114 +1,182 @@
-# Project Refactoring Summary
+# fresh-squeezy
 
-## Overview
+> The missing billing layer for Lemon Squeezy — auto-discover, checkout, webhooks, subscriptions, and licenses in one function call.
 
-Successfully completed the refactoring of the `src/wizard.ts` file and reorganized the project structure to enable better modularity and maintainability.
+[![npm](https://img.shields.io/npm/v/fresh-squeezy)](https://www.npmjs.com/package/fresh-squeezy)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Changes Made
+## Install
 
-### 1. Created Skills Folder Structure
-
-- **Root Skills Directory**: `/skills/`
-- **Wizard Skill**: `/skills/wizard/` - Interactive setup wizard functionality
-  - `components/` - Reusable UI components (banner, loading animations)
-  - `steps/` - Individual wizard steps (API key, store selection, etc.)
-  - `utils/` - Wizard-specific utilities (validation, file generation)
-  - `types.ts` - Wizard-specific type definitions
-- **CLI Skill**: `/skills/cli/` - Command-line interface functionality
-  - `commands/` - Individual CLI command implementations
-  - `utils/` - CLI utilities and helpers
-- **Validation Skill**: `/skills/validation/` - Testing and validation functionality
-  - `tests/` - Validation test implementations
-  - `utils/` - Validation utilities and helpers
-
-### 2. Reorganized Source Code Structure
-
-- **Core Directory**: `/src/core/` - Core billing functionality
-  - Moved all core billing logic from root src/ directory
-  - Updated all import paths to use new structure
-- **CLI Directory**: `/src/cli/` - CLI-related files
-  - `cli.ts` - Main CLI entry point
-  - `cli-validate.ts` - Validation functionality
-- **Types Directory**: `/src/types/` - Type definitions
-  - `types.ts` - Main types export
-  - Existing type subdirectories preserved
-- **Utils Directory**: `/src/utils/` - Utility files (created but empty for now)
-
-### 3. Split Wizard.ts into Modular Components
-
-The original monolithic `wizard.ts` (~1000 lines) was split into:
-
-- **Main Wizard Class**: `/skills/wizard/main.ts`
-- **Type Definitions**: `/skills/wizard/types.ts`
-- **UI Components**: 
-  - `/skills/wizard/components/banner.ts`
-  - `/skills/wizard/components/loading.ts`
-- **Wizard Steps**:
-  - `/skills/wizard/steps/api-key.ts`
-  - `/skills/wizard/steps/store-selection.ts`
-  - `/skills/wizard/steps/product-selection.ts`
-  - `/skills/wizard/steps/webhook-setup.ts`
-  - `/skills/wizard/steps/configuration.ts`
-  - `/skills/wizard/steps/generate-files.ts`
-- **Utilities**:
-  - `/skills/wizard/utils/file-generation.ts`
-  - `/skills/wizard/utils/validation.ts`
-  - `/skills/wizard/utils/real-cycle.ts`
-
-### 4. Updated Import Paths
-
-- Updated all import statements throughout the project to use the new directory structure
-- Fixed TypeScript compilation issues
-- Ensured all modules can find their dependencies
-
-### 5. Created Comprehensive Documentation
-
-- **Root README**: This summary document
-- **Skills README**: Architecture overview and usage instructions
-- **Wizard README**: Detailed wizard functionality documentation
-- **CLI README**: CLI command documentation
-- **Validation README**: Testing and validation documentation
-
-## Benefits Achieved
-
-1. **Improved Modularity**: Each wizard step is now a separate, testable module
-2. **Better Maintainability**: Clear separation of concerns makes code easier to understand and modify
-3. **Enhanced Reusability**: Components can be reused across different parts of the system
-4. **Cleaner Architecture**: Logical grouping of related functionality
-5. **Easier Testing**: Individual modules can be tested independently
-6. **Better Developer Experience**: Clear documentation and organized structure
-
-## Project Structure
-
-```
-fresh-squeezy/
-├── skills/                    # Modular skills system
-│   ├── wizard/               # Interactive setup wizard
-│   │   ├── components/       # UI components
-│   │   ├── steps/           # Wizard steps
-│   │   ├── utils/           # Wizard utilities
-│   │   ├── types.ts         # Wizard types
-│   │   └── main.ts          # Main wizard class
-│   ├── cli/                 # CLI functionality
-│   │   ├── commands/        # CLI commands
-│   │   └── utils/           # CLI utilities
-│   └── validation/          # Testing and validation
-│       ├── tests/           # Validation tests
-│       └── utils/           # Validation utilities
-├── src/                     # Source code
-│   ├── core/               # Core billing functionality
-│   ├── cli/                # CLI-related files
-│   ├── types/              # Type definitions
-│   └── utils/              # Utility files
-└── README.md               # This documentation
+```bash
+npm install fresh-squeezy
+# peer deps
+npm install @lemonsqueezy/lemonsqueezy.js
 ```
 
-## Testing Status
+## Quick Start
 
-- ✅ TypeScript compilation passes
-- ✅ Build process completes successfully
-- ✅ All import paths updated and working
-- ✅ Modular structure implemented
-- ✅ Documentation created
+```ts
+import { createBilling } from "fresh-squeezy";
 
-The refactoring is complete and the project is ready for continued development with the new modular structure.
+const billing = await createBilling({
+  apiKey: process.env.LS_API_KEY!,
+  webhookSecret: process.env.LS_WEBHOOK_SECRET!,
+  callbacks: {
+    onPurchase: async ({ userId, email, orderId, productName, price }) => {
+      await db.grantAccess(userId);
+    },
+    onSubscription: async (event, method) => {
+      if (method === "cancelled") await db.revokeAccess(event.userId);
+    },
+    onSubscriptionPayment: async (event, method) => {
+      if (method === "success") await db.extendAccess(event.userId);
+    },
+  },
+});
+
+// Create a checkout URL
+const url = await billing.createCheckout({
+  variantId: "123456",
+  email: "user@example.com",
+  userId: "user_abc",
+});
+
+// Verify + handle a webhook (Express example)
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["x-signature"] as string;
+  if (!billing.verifyWebhook(req.body.toString(), sig)) return res.sendStatus(401);
+  await billing.handleWebhook(JSON.parse(req.body.toString()));
+  res.json({ ok: true });
+});
+```
+
+## Setup Wizard
+
+Run the interactive wizard to generate a `billing-config.ts` for your project:
+
+```bash
+pnpm wizard
+# or after installing the package globally:
+npx fresh-squeezy-billing wizard
+```
+
+The wizard:
+- Validates your API key against Lemon Squeezy
+- Lets you select stores, products, and webhook events
+- Generates `billing-config.ts` and `example.ts` in your project root
+- Optionally runs all 6 API lifecycle test phases (setup → customer → order → subscription → license → cleanup)
+
+## Configuration
+
+```ts
+interface BillingConfig {
+  apiKey: string;
+  storeId?: string;
+  webhookSecret?: string;
+  cachePath?: string;        // default: "./billing-cache.json"
+  cacheTtlMs?: number;       // default: 3 600 000 (1 hour)
+  checkoutExpiresInMs?: number | null;
+  logger?: { filePath: string } | { custom: BillingLogger };
+  callbacks: BillingCallbacks;
+  dedup?: DedupConfig;
+}
+```
+
+## Callbacks
+
+```ts
+interface BillingCallbacks {
+  onPurchase: (event: PurchaseEvent) => Promise<void>;
+  onRefund?: (event: RefundEvent) => Promise<void>;
+  onSubscription?: (event: AnySubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
+  // method: 'created' | 'updated' | 'cancelled' | 'expired' | 'paused' | 'resumed'
+  onSubscriptionPayment?: (event: SubscriptionPaymentSuccessEvent | SubscriptionPaymentRecoveredEvent, method: 'success' | 'recovered') => Promise<void>;
+  onPaymentFailed?: (event: PaymentFailedEvent) => Promise<void>;
+  onLicenseKey?: (method: 'created' | 'updated', event: LicenseKeyEvent) => Promise<void>;
+  onWebhook?: (eventType: string, event: unknown) => Promise<void>;
+}
+```
+
+## Billing API
+
+```ts
+billing.stores                              // StoreInfo[]
+billing.plans                               // Plan[]  (auto-refreshed from cache)
+billing.createCheckout(params)              // Promise<string>  — checkout URL
+billing.verifyWebhook(rawBody, sig)         // boolean
+billing.handleWebhook(payload)              // Promise<void>
+billing.refreshPlans()                      // Promise<void>
+billing.getCustomerPortal(customerId)       // Promise<string>  — portal URL
+billing.getExpressRouter(options)           // Express Router
+
+// Subscriptions
+billing.pauseSubscription(id, reason?)
+billing.resumeSubscription(id)
+billing.cancelSubscription(id, immediately?)
+billing.changeSubscriptionVariant(id, variantId)
+billing.resumeCancelledSubscription(id)
+
+// Licenses
+billing.validateLicense(key)               // Promise<{ valid: boolean; details? }>
+billing.getLicenseDetails(key)             // Promise<LicenseKeyEvent | null>
+billing.activateLicense(key, instanceName) // Promise<{ activated: boolean; instanceId? }>
+billing.deactivateLicense(key, instanceId) // Promise<boolean>
+
+// Customers
+billing.getCustomerByEmail(email)
+billing.getSubscriptionsForUser(userId)
+
+// Webhooks
+billing.createWebhook(url, events, secret?)
+billing.deleteWebhook(webhookId)
+
+// Other
+billing.healthCheck()
+billing.dedupBackend
+```
+
+## Express Router
+
+```ts
+import express from "express";
+
+const app = express();
+app.use("/billing", billing.getExpressRouter({
+  webhookPath: "/webhook",
+  checkoutPath: "/checkout",
+}));
+```
+
+## Deduplication
+
+By default, webhook deduplication is in-memory and process-local. Swap in Redis or a database backend:
+
+```ts
+import { RedisDedupBackend } from "fresh-squeezy";
+
+const billing = await createBilling({
+  // ...
+  dedup: {
+    backend: new RedisDedupBackend(redisClient),
+    ttlMs: 86_400_000,
+  },
+});
+```
+
+## CLI
+
+```bash
+npx fresh-squeezy-billing wizard     # interactive setup
+npx fresh-squeezy-billing validate   # run validation suite
+npx fresh-squeezy-billing help
+```
+
+## Requirements
+
+- Node.js ≥ 20
+- `@lemonsqueezy/lemonsqueezy.js` ≥ 3.2.0
+- Express ≥ 4.18 (optional, only if using `getExpressRouter`)
+
+## License
+
+MIT
