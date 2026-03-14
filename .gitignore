@@ -18,7 +18,8 @@ docs
 !.husky/**
 !.github/
 !.github/**
-!.ls-changelog-state.md
+!scripts/ls-changelog/state.md
+scripts/ls-changelog/changelog/
 
 billing-config.ts
 test-workflows.sh
