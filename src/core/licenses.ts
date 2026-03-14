@@ -1,6 +1,14 @@
 import { getLicenseKey } from "@lemonsqueezy/lemonsqueezy.js";
-import type { LicenseKeyManagement, LicenseKeyEvent, LemonSqueezyLicenseKeyAttributes } from "../types/index.js";
+import type {
+  LicenseKeyManagement,
+  LicenseKeyEvent,
+  LemonSqueezyLicenseKeyAttributes,
+  LicenseActivationResponse,
+  LicenseDeactivationResponse,
+} from "../types/index.js";
 import { withRetry } from "./retry.js";
+
+const LS_LICENSE_API_BASE = "https://api.lemonsqueezy.com/v1/licenses";
 
 function mapAttributesToLicenseKeyEvent(
   attrs: LemonSqueezyLicenseKeyAttributes,
@@ -43,8 +51,8 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
         attrs.key
       );
 
-      const valid = details.status === "active" && 
-                   details.activationCount < details.maxActivations;
+      const valid = details.status === "active" &&
+                   (details.maxActivations === null || details.activationCount <= details.maxActivations);
 
       return { valid, details };
     } catch {
@@ -53,46 +61,78 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
   };
 
   const getLicenseDetails = async (key: string): Promise<LicenseKeyEvent | null> => {
-    const response = await withRetry(
-      () => getLicenseKey(key),
-      "getLicenseKey"
-    );
+    try {
+      const response = await withRetry(
+        () => getLicenseKey(key),
+        "getLicenseKey"
+      );
 
-    if (response.error || !response.data?.data) {
+      if (response.error || !response.data?.data) {
+        return null;
+      }
+
+      const attrs = response.data.data.attributes as LemonSqueezyLicenseKeyAttributes;
+      return mapAttributesToLicenseKeyEvent(
+        attrs,
+        response.data.data.id,
+        attrs.key
+      );
+    } catch {
       return null;
     }
-
-    const attrs = response.data.data.attributes as LemonSqueezyLicenseKeyAttributes;
-    return mapAttributesToLicenseKeyEvent(
-      attrs,
-      response.data.data.id,
-      attrs.key
-    );
   };
 
-  const activateLicense = async (key: string, _instanceId?: string): Promise<boolean> => {
-    // Note: Lemon Squeezy doesn't have a direct activation API
-    // This would typically be handled by your application logic
-    // based on the license key details and activation limits
-    
-    const validation = await validateLicense(key);
-    if (!validation.valid || !validation.details) {
+  // Note: License API is a direct HTTP call; retries are intentionally omitted (callers should retry at the application level)
+  const activateLicense = async (key: string, instanceName?: string): Promise<{ activated: boolean; instanceId?: string }> => {
+    const resolvedName = instanceName ?? "default";
+    const body = new URLSearchParams({ license_key: key, instance_name: resolvedName });
+
+    try {
+      const response = await fetch(`${LS_LICENSE_API_BASE}/activate`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        return { activated: false };
+      }
+
+      const data = (await response.json()) as LicenseActivationResponse;
+      return { activated: data.activated === true, instanceId: data.instance?.id };
+    } catch {
+      return { activated: false };
+    }
+  };
+
+  const deactivateLicense = async (key: string, instanceId?: string): Promise<boolean> => {
+    if (!instanceId) {
       return false;
     }
+    const body = new URLSearchParams({ license_key: key, instance_id: instanceId });
 
-    // Here you would typically:
-    // 1. Check if this instanceId is already activated
-    // 2. Increment activation count in your database
-    // 3. Return success/failure based on your business logic
-    
-    return true; // Placeholder - implement based on your needs
-  };
+    try {
+      const response = await fetch(`${LS_LICENSE_API_BASE}/deactivate`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
 
-  const deactivateLicense = async (_key: string, _instanceId?: string): Promise<boolean> => {
-    // Similar to activateLicense, this would be handled by your application logic
-    // based on your activation tracking system
-    
-    return true; // Placeholder - implement based on your needs
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = (await response.json()) as LicenseDeactivationResponse;
+      return data.deactivated === true;
+    } catch {
+      return false;
+    }
   };
 
   return {

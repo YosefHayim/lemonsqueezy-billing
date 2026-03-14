@@ -10,6 +10,8 @@ import type {
   SubscriptionResumedEvent,
   SubscriptionPaymentSuccessEvent,
   SubscriptionPaymentRecoveredEvent,
+  SubscriptionMethod,
+  SubscriptionPaymentMethod,
   LicenseKeyEvent,
   LicenseMethod,
   WebhookMethod,
@@ -91,40 +93,17 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
         return { dispatched: callbacks.onRefund ? "onRefund" : null, skipped: false };
       }
 
-      case "subscription_created": {
-        const event = buildSubscriptionEvent(userId, email, dataId, attrs);
-        if (callbacks.onSubscriptionCreated) {
-          await callbacks.onSubscriptionCreated(event);
-        }
-        await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionCreated ? "onSubscriptionCreated" : null, skipped: false };
-      }
-
-      case "subscription_updated": {
-        const event = buildSubscriptionEvent(userId, email, dataId, attrs);
-        if (callbacks.onSubscriptionUpdated) {
-          await callbacks.onSubscriptionUpdated(event);
-        }
-        await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionUpdated ? "onSubscriptionUpdated" : null, skipped: false };
-      }
-
-      case "subscription_cancelled": {
-        const event = buildSubscriptionEvent(userId, email, dataId, attrs);
-        if (callbacks.onSubscriptionCancelled) {
-          await callbacks.onSubscriptionCancelled(event);
-        }
-        await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionCancelled ? "onSubscriptionCancelled" : null, skipped: false };
-      }
-
+      case "subscription_created":
+      case "subscription_updated":
+      case "subscription_cancelled":
       case "subscription_expired": {
+        const method = eventName.replace("subscription_", "") as SubscriptionMethod;
         const event = buildSubscriptionEvent(userId, email, dataId, attrs);
-        if (callbacks.onSubscriptionExpired) {
-          await callbacks.onSubscriptionExpired(event);
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, method);
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionExpired ? "onSubscriptionExpired" : null, skipped: false };
+        return { dispatched: callbacks.onSubscription ? `onSubscription:${method}` : null, skipped: false };
       }
 
       case "subscription_payment_failed": {
@@ -150,11 +129,11 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           customerId: String(attrs.customer_id ?? ""),
           reason: String(attrs.pause_reason ?? ""),
         };
-        if (callbacks.onSubscriptionPaused) {
-          await callbacks.onSubscriptionPaused(event);
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, "paused");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionPaused ? "onSubscriptionPaused" : null, skipped: false };
+        return { dispatched: callbacks.onSubscription ? "onSubscription:paused" : null, skipped: false };
       }
 
       case "subscription_resumed":
@@ -165,11 +144,11 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           subscriptionId: dataId,
           customerId: String(attrs.customer_id ?? ""),
         };
-        if (callbacks.onSubscriptionResumed) {
-          await callbacks.onSubscriptionResumed(event);
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, "resumed");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionResumed ? "onSubscriptionResumed" : null, skipped: false };
+        return { dispatched: callbacks.onSubscription ? "onSubscription:resumed" : null, skipped: false };
       }
 
       case "subscription_payment_success": {
@@ -181,11 +160,11 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           orderId: String(attrs.order_id ?? ""),
           amount: Number(attrs.total ?? 0),
         };
-        if (callbacks.onSubscriptionPaymentSuccess) {
-          await callbacks.onSubscriptionPaymentSuccess(event);
+        if (callbacks.onSubscriptionPayment) {
+          await callbacks.onSubscriptionPayment(event, "success");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionPaymentSuccess ? "onSubscriptionPaymentSuccess" : null, skipped: false };
+        return { dispatched: callbacks.onSubscriptionPayment ? "onSubscriptionPayment:success" : null, skipped: false };
       }
 
       case "subscription_payment_recovered": {
@@ -197,11 +176,11 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           orderId: String(attrs.order_id ?? ""),
           amount: Number(attrs.total ?? 0),
         };
-        if (callbacks.onSubscriptionPaymentRecovered) {
-          await callbacks.onSubscriptionPaymentRecovered(event);
+        if (callbacks.onSubscriptionPayment) {
+          await callbacks.onSubscriptionPayment(event, "recovered");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionPaymentRecovered ? "onSubscriptionPaymentRecovered" : null, skipped: false };
+        return { dispatched: callbacks.onSubscriptionPayment ? "onSubscriptionPayment:recovered" : null, skipped: false };
       }
 
       case "license_key_created": {
