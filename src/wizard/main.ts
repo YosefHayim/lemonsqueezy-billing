@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { DEFAULT_CACHE_PATH, DEFAULT_LOG_PATH } from '../core/paths.js';
 import { banner } from './components/banner.js';
 import { LoadingAnimation } from './components/loading.js';
 import { stepApiKey } from './steps/api-key.js';
@@ -46,9 +47,9 @@ export async function runWizard(): Promise<void> {
     const { webhookUrl, webhookEvents } = await stepWebhookSetup();
 
     const defaults = {
-      cachePath: './billing-cache.json',
+      cachePath: DEFAULT_CACHE_PATH,
       webhookSecret: generateSecret(),
-      loggerPath: './billing.log',
+      loggerPath: DEFAULT_LOG_PATH,
     };
     const { cachePath, webhookSecret, loggerPath } = await stepConfiguration(defaults);
 

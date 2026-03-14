@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 
 import { loadEnv, getApiKey, confirmBeforeLive, cleanupFiles, logPhaseStart, logPhaseEnd } from "./cli-test/shared.js";
+import { CLI_TEST_CACHE_PATH, CLI_TEST_LOG_PATH } from "./paths.js";
 import { runOfflineTests } from "./cli-test/offline.js";
 import { runLiveTests } from "./cli-test/live.js";
 import { runWebhookTests } from "./cli-test/webhooks.js";
@@ -216,8 +217,8 @@ async function main() {
   const config = {
     apiKey,
     webhookSecret,
-    cachePath: `/tmp/lemonsqueezy-billing-cli-test-cache.json`,
-    logPath: `/tmp/lemonsqueezy-billing-cli-test.log`,
+    cachePath: CLI_TEST_CACHE_PATH,
+    logPath: CLI_TEST_LOG_PATH,
     testEmail: env.LS_TEST_EMAIL,
     testLicenseKey: env.LS_TEST_LICENSE_KEY,
     testSubscriptionId: env.LS_TEST_SUBSCRIPTION_ID,

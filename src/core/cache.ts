@@ -1,8 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { BillingCache } from "../types/index.js";
-
-const DEFAULT_CACHE_PATH = "./billing-cache.json";
+import { DEFAULT_CACHE_PATH } from "./paths.js";
 const DEFAULT_TTL_MS = 3_600_000;
 
 export function readCache(cachePath?: string): BillingCache | undefined {

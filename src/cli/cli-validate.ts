@@ -1,6 +1,7 @@
 import { createBilling } from "@core/index.js";
 import { createHmac } from "node:crypto";
 import { readFileSync, unlinkSync } from "node:fs";
+import { VALIDATE_CACHE_PATH, VALIDATE_LOG_PATH, VALIDATE_LIVE_CACHE_PATH } from "./paths.js";
 
 const WEBHOOK_SECRET = process.env.LS_WEBHOOK_SECRET ?? "test-webhook-secret";
 
@@ -18,8 +19,8 @@ function cleanup(cachePath: string, logPath: string): void {
 }
 
 export async function runValidate(): Promise<void> {
-  const CACHE_PATH = "/tmp/lemonsqueezy-billing-validate-cache.json";
-  const LOG_PATH = "/tmp/lemonsqueezy-billing-validate.log";
+  const CACHE_PATH = VALIDATE_CACHE_PATH;
+  const LOG_PATH = VALIDATE_LOG_PATH;
   const API_KEY = process.env.LS_API_KEY;
 
   console.log("\ud83c\udf4b lemonsqueezy-billing \u2014 Validation Suite\n");
@@ -161,7 +162,7 @@ async function validateLive(apiKey: string | undefined, cachePath: string, logPa
   console.log("\n\ud83c\udf10 Live Validation (real API calls)\n");
   cleanup(cachePath, logPath);
 
-  const liveCachePath = "/tmp/lemonsqueezy-billing-live-cache.json";
+  const liveCachePath = VALIDATE_LIVE_CACHE_PATH;
 
   const billing = await createBilling({
     apiKey: apiKey,
