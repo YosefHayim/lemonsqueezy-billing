@@ -2,12 +2,13 @@ name: Publish Package
 
 on:
   push:
+    branches: [master]
     tags:
       - "v*.*.*"
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -15,7 +16,7 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup pnpm
@@ -33,13 +34,42 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check if version needs publishing
+        id: check
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          NPM_LATEST=$(npm view fresh-squeezy version 2>/dev/null || echo "0.0.0")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$CURRENT" = "$NPM_LATEST" ]; then
+            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version $CURRENT already on npm — skipping"
+          else
+            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
+            echo "New version $CURRENT (npm has $NPM_LATEST) — will publish"
+          fi
+
       - name: Typecheck
+        if: steps.check.outputs.needs_publish == 'true'
         run: pnpm run typecheck
 
       - name: Build
+        if: steps.check.outputs.needs_publish == 'true'
         run: pnpm run build
 
+      - name: Tag and create GitHub Release
+        if: steps.check.outputs.needs_publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.check.outputs.current }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "chore(release): $TAG" 2>/dev/null || echo "Tag $TAG already exists"
+          git push origin "$TAG" 2>/dev/null || echo "Tag $TAG already pushed"
+          gh release create "$TAG" --title "$TAG" --generate-notes --latest 2>/dev/null || echo "Release $TAG already exists"
+
       - name: Publish to npm
+        if: steps.check.outputs.needs_publish == 'true'
         run: pnpm publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
