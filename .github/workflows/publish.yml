@@ -66,11 +66,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v${{ steps.check.outputs.current }}"
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          COMMIT_HASH=$(git log -1 --pretty=format:"%h")
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "chore(release): $TAG" 2>/dev/null || echo "Tag $TAG already exists"
+          git tag -a "$TAG" -m "$COMMIT_MSG" 2>/dev/null || echo "Tag $TAG already exists"
           git push origin "$TAG" 2>/dev/null || echo "Tag $TAG already pushed"
-          gh release create "$TAG" --title "$TAG" --generate-notes --latest 2>/dev/null || echo "Release $TAG already exists"
+          gh release create "$TAG" \
+            --title "$TAG — $COMMIT_MSG" \
+            --notes "$(git log $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:'- %s ([%h](https://github.com/YosefHayim/fresh-squeezy/commit/%H))' 2>/dev/null)" \
+            --latest 2>/dev/null || echo "Release $TAG already exists"
 
       - name: Publish to npm
         if: steps.check.outputs.needs_publish == 'true'
