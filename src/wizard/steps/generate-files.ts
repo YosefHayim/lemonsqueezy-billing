@@ -6,6 +6,7 @@ import { generateExampleContent } from '../utils/example-content.js';
 import { runValidationTests } from '../utils/validation.js';
 import { LoadingAnimation } from '../components/loading.js';
 import { confirm } from '@inquirer/prompts';
+import { WIZARD_CONFIG_FILE, WIZARD_EXAMPLE_FILE } from '../../core/paths.js';
 
 declare const process: {
   cwd: () => string;
@@ -34,8 +35,8 @@ export async function stepGenerateFiles(
     const configContent = generateConfigContent(state);
     const exampleContent = generateExampleContent(state);
 
-    const configPath = resolve(process.cwd(), 'billing-config.ts');
-    const examplePath = resolve(process.cwd(), 'example.ts');
+    const configPath = resolve(process.cwd(), WIZARD_CONFIG_FILE);
+    const examplePath = resolve(process.cwd(), WIZARD_EXAMPLE_FILE);
 
     await Promise.all([
       writeFile(configPath, configContent, 'utf8'),

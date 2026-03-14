@@ -1,4 +1,5 @@
 import type { LoadingAnimation } from '../components/loading.js';
+import { WIZARD_CONFIG_FILE } from '../../core/paths.js';
 
 declare const process: {
   cwd: () => string;
@@ -22,10 +23,10 @@ export async function runValidationTests(loading: LoadingAnimation): Promise<voi
     loading.stop('[+] Build process passed');
 
     loading.start('Testing billing configuration');
-    const configPath = path.resolve(process.cwd(), 'billing-config.ts');
+    const configPath = path.resolve(process.cwd(), WIZARD_CONFIG_FILE);
 
     if (!fs.existsSync(configPath)) {
-      throw new Error('billing-config.ts file not found');
+      throw new Error(`${WIZARD_CONFIG_FILE} file not found`);
     }
 
     const configContent = fs.readFileSync(configPath, 'utf8');
