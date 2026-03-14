@@ -85,11 +85,40 @@ jobs:
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "Bumped to $NEW_VERSION (${{ steps.bump.outputs.type }})"
 
+      - name: Build release notes from commits
+        id: notes
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BUMP_TYPE: ${{ steps.bump.outputs.type }}
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
+          fi
+          {
+            echo "body<<RELEASE_EOF"
+            echo "## What Changed"
+            echo ""
+            echo "**PR:** [#${PR_NUMBER} — ${PR_TITLE}](${PR_URL})"
+            echo "**Bump:** \`${BUMP_TYPE}\`"
+            echo ""
+            echo "### Commits"
+            echo ""
+            echo "$COMMITS"
+            echo ""
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Commit version bump and create tag
         run: |
           git add package.json pnpm-lock.yaml
           git commit -m "chore(release): ${{ steps.version.outputs.version }}"
-          git tag -a "${{ steps.version.outputs.version }}" -m "chore(release): ${{ steps.version.outputs.version }}"
+          git tag -a "${{ steps.version.outputs.version }}" \
+            -m "Release ${{ steps.version.outputs.version }} — ${{ github.event.pull_request.title }}"
           git push origin master --follow-tags
 
       - name: Publish to npm
@@ -103,6 +132,6 @@ jobs:
           TAG: ${{ steps.version.outputs.version }}
         run: |
           gh release create "$TAG" \
-            --title "$TAG" \
-            --generate-notes \
+            --title "$TAG — ${{ github.event.pull_request.title }}" \
+            --notes "${{ steps.notes.outputs.body }}" \
             --latest

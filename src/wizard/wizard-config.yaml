@@ -1,0 +1,94 @@
+meta:
+  name: Lemon Squeezy Billing Setup
+  description: Quick setup for your billing integration
+
+theme:
+  preset: catppuccin
+  spinner: dots
+
+steps:
+  - id: api-key
+    type: text
+    message: "Enter your Lemon Squeezy API key:"
+    description: "Set LS_TEST_API_KEY or LS_LIVE_API_KEY in .env to skip this step"
+    validate:
+      - rule: required
+        message: "API key is required"
+
+  - id: sandbox-mode
+    type: confirm
+    message: "Is this a sandbox/test key?"
+    default: true
+
+  - id: store-selection
+    type: multiselect
+    message: "Select stores to use:"
+    options:
+      - { value: loading, label: "Loading stores..." }
+
+  - id: product-selection
+    type: multiselect
+    message: "Select products to include:"
+    options:
+      - { value: loading, label: "Loading products..." }
+
+  - id: create-webhook
+    type: confirm
+    message: "Create webhook endpoint?"
+    default: true
+
+  - id: webhook-url
+    type: text
+    message: "Webhook URL:"
+    default: "https://your-domain.com/webhook"
+    when:
+      field: create-webhook
+      equals: true
+    validate:
+      - rule: required
+        message: "Webhook URL is required"
+      - rule: pattern
+        value: "^https?://"
+        message: "Enter a valid URL (e.g. https://example.com/webhook)"
+
+  - id: webhook-events
+    type: multiselect
+    message: "Select webhook events:"
+    when:
+      field: create-webhook
+      equals: true
+    options:
+      - { value: order_created, label: "Order Created" }
+      - { value: order_refunded, label: "Order Refunded" }
+      - { value: subscription_created, label: "Subscription Created" }
+      - { value: subscription_updated, label: "Subscription Updated" }
+      - { value: subscription_cancelled, label: "Subscription Cancelled" }
+      - { value: subscription_payment_success, label: "Subscription Payment Success" }
+      - { value: subscription_payment_recovered, label: "Subscription Payment Recovered" }
+      - { value: subscription_payment_failed, label: "Payment Failed" }
+      - { value: license_key_created, label: "License Key Created" }
+      - { value: license_key_updated, label: "License Key Updated" }
+
+  - id: cache-path
+    type: text
+    message: "Cache file path:"
+    default: ".billing/cache.json"
+
+  - id: webhook-secret
+    type: text
+    message: "Webhook secret:"
+
+  - id: logger-path
+    type: text
+    message: "Logger file path:"
+    default: ".billing/billing.log"
+
+  - id: generate-files
+    type: confirm
+    message: "Generate configuration files?"
+    default: true
+
+  - id: run-tests
+    type: confirm
+    message: "Run API lifecycle test phases?"
+    default: false

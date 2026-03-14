@@ -67,6 +67,8 @@ npx fresh-squeezy-billing wizard
 
 Generates `.billing/billing-config.ts` and `.billing/example.ts` in your project.
 
+> Built with [grimoire-wizard](https://github.com/YosefHayim/grimoire) — config-driven CLI wizard framework. The wizard steps are defined in YAML, with dynamic API integration via grimoire's programmatic hooks.
+
 ---
 
 ## Configuration

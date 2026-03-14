@@ -1,6 +1,6 @@
 {
   "name": "fresh-squeezy",
-  "version": "1.0.49",
+  "version": "1.0.52",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
   "homepage": "https://github.com/YosefHayim/fresh-squeezy#readme",
@@ -51,7 +51,7 @@
     "cli-test": "tsx scripts/cli-test.ts",
     "cli-test:sandbox": "tsx scripts/cli-test.ts --sandbox",
     "cli-test:live": "tsx scripts/cli-test.ts --live",
-    "wizard": "tsx src/wizard/main.ts",
+    "wizard": "tsx src/wizard/grimoire-wizard.ts",
     "monitor-changelog": "tsx scripts/monitor-ls-changelog.ts",
     "monitor-changelog:force": "tsx scripts/monitor-ls-changelog.ts --force"
   },
@@ -83,6 +83,7 @@
   "packageManager": "pnpm@9.15.0",
   "license": "MIT",
   "dependencies": {
-    "@inquirer/prompts": "^8.3.0"
+    "@inquirer/prompts": "^8.3.0",
+    "grimoire-wizard": "^0.5.0"
   }
 }
