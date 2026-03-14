@@ -1,15 +1,15 @@
 {
   "name": "fresh-squeezy",
-  "version": "1.0.41",
+  "version": "1.0.43",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
-  "homepage": "https://github.com/yosefhayim/fresh-squeezy#readme",
+  "homepage": "https://github.com/YosefHayim/fresh-squeezy#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yosefhayim/fresh-squeezy.git"
+    "url": "git+https://github.com/YosefHayim/fresh-squeezy.git"
   },
   "bugs": {
-    "url": "https://github.com/yosefhayim/fresh-squeezy/issues"
+    "url": "https://github.com/YosefHayim/fresh-squeezy/issues"
   },
   "keywords": [
     "fresh-squeezy",
