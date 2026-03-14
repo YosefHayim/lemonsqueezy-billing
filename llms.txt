@@ -1,4 +1,4 @@
-# lemonsqueezy-billing
+# fresh-squeezy
 
 > The missing billing layer for Lemon Squeezy. Auto-discover stores/products, create checkout sessions, handle webhooks — one function call.
 

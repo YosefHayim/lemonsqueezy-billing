@@ -49,7 +49,7 @@ function parseArgs(): CliArgs {
 }
 
 async function main() {
-  console.log("🍋 lemonsqueezy-billing — CLI Test Suite\n");
+  console.log("🍋 fresh-squeezy — CLI Test Suite\n");
   console.log("=".repeat(50));
 
   const args = parseArgs();
@@ -216,8 +216,8 @@ async function main() {
   const config = {
     apiKey,
     webhookSecret,
-    cachePath: `/tmp/lemonsqueezy-billing-cli-test-cache.json`,
-    logPath: `/tmp/lemonsqueezy-billing-cli-test.log`,
+    cachePath: `/tmp/fresh-squeezy-cli-test-cache.json`,
+    logPath: `/tmp/fresh-squeezy-cli-test.log`,
     testEmail: env.LS_TEST_EMAIL,
     testLicenseKey: env.LS_TEST_LICENSE_KEY,
     testSubscriptionId: env.LS_TEST_SUBSCRIPTION_ID,

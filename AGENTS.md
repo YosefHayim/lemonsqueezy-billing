@@ -4,7 +4,7 @@ Context for AI coding agents (Claude Code, Cursor, GitHub Copilot, etc.).
 
 ## What This Package Does
 
-`@yosefhayim/lemonsqueezy-billing` is a TypeScript abstraction over the Lemon Squeezy SDK. It handles four concerns:
+`@yosefhayim/fresh-squeezy` is a TypeScript abstraction over the Lemon Squeezy SDK. It handles four concerns:
 
 1. **Bootstrap** — authenticates with the LS API, discovers stores and products, writes a local cache
 2. **Checkout** — creates per-user checkout URLs with retry and expiry

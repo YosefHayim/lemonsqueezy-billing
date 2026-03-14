@@ -1,18 +1,18 @@
 {
-  "name": "lemonsqueezy-billing",
-  "version": "1.0.13",
+  "name": "fresh-squeezy",
+  "version": "1.0.15",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
-  "homepage": "https://github.com/yosefhayim/lemonsqueezy-billing#readme",
+  "homepage": "https://github.com/yosefhayim/fresh-squeezy#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yosefhayim/lemonsqueezy-billing.git"
+    "url": "git+https://github.com/yosefhayim/fresh-squeezy.git"
   },
   "bugs": {
-    "url": "https://github.com/yosefhayim/lemonsqueezy-billing/issues"
+    "url": "https://github.com/yosefhayim/fresh-squeezy/issues"
   },
   "keywords": [
-    "lemonsqueezy",
+    "fresh-squeezy",
     "lemon-squeezy",
     "billing",
     "payments",
@@ -26,12 +26,12 @@
     "sdk"
   ],
   "sideEffects": false,
-  "llms": "https://raw.githubusercontent.com/yosefhayim/lemonsqueezy-billing/main/llms.txt",
+  "llms": "https://raw.githubusercontent.com/yosefhayim/fresh-squeezy/main/llms.txt",
   "type": "module",
   "main": "dist/src/core/index.js",
   "types": "dist/src/core/index.d.ts",
   "bin": {
-    "lemonsqueezy-billing": "dist/src/cli/cli.js"
+    "fresh-squeezy-billing": "dist/src/cli/cli.js"
   },
   "exports": {
     ".": {
@@ -66,7 +66,7 @@
     }
   },
   "devDependencies": {
-    "@lemonsqueezy/lemonsqueezy.js": "^3.2.0",
+    "@fresh-squeezy/fresh-squeezy.js": "^3.2.0",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.6",
     "@types/prompts": "^2.4.9",

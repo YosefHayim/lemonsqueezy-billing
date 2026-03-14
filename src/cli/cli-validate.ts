@@ -18,11 +18,11 @@ function cleanup(cachePath: string, logPath: string): void {
 }
 
 export async function runValidate(): Promise<void> {
-  const CACHE_PATH = "/tmp/lemonsqueezy-billing-validate-cache.json";
-  const LOG_PATH = "/tmp/lemonsqueezy-billing-validate.log";
+  const CACHE_PATH = "/tmp/fresh-squeezy-validate-cache.json";
+  const LOG_PATH = "/tmp/fresh-squeezy-validate.log";
   const API_KEY = process.env.LS_API_KEY;
 
-  console.log("\ud83c\udf4b lemonsqueezy-billing \u2014 Validation Suite\n");
+  console.log("\ud83c\udf4b fresh-squeezy \u2014 Validation Suite\n");
   console.log("=".repeat(50));
 
   await validateOffline(CACHE_PATH, LOG_PATH);
@@ -161,7 +161,7 @@ async function validateLive(apiKey: string | undefined, cachePath: string, logPa
   console.log("\n\ud83c\udf10 Live Validation (real API calls)\n");
   cleanup(cachePath, logPath);
 
-  const liveCachePath = "/tmp/lemonsqueezy-billing-live-cache.json";
+  const liveCachePath = "/tmp/fresh-squeezy-live-cache.json";
 
   const billing = await createBilling({
     apiKey: apiKey,

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`lemonsqueezy-billing` is a TypeScript abstraction layer over the Lemon Squeezy SDK. It provides a unified API for billing operations including checkout sessions, webhooks, subscriptions, license keys, and customer management.
+`fresh-squeezy` is a TypeScript abstraction layer over the Lemon Squeezy SDK. It provides a unified API for billing operations including checkout sessions, webhooks, subscriptions, license keys, and customer management.
 
 ## High-Level Architecture
 

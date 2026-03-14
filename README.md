@@ -81,7 +81,7 @@ The original monolithic `wizard.ts` (~1000 lines) was split into:
 ## Project Structure
 
 ```
-lemonsqueezy-billing/
+fresh-squeezy/
 ├── skills/                    # Modular skills system
 │   ├── wizard/               # Interactive setup wizard
 │   │   ├── components/       # UI components

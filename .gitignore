@@ -4,9 +4,10 @@ dist
 billing.log
 billing-cache.json
 .billing-cache.json
-AGENTS.
 agents
 docs
+.cursorrules
+
 
 # Dot-prefixed files and folders (keep .gitignore, .husky, .github)
 .*
