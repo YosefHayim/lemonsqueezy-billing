@@ -108,3 +108,5 @@ export class BillingWizard {
     await runWizard();
   }
 }
+
+runWizard();
