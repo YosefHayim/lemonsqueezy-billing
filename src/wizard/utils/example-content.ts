@@ -4,7 +4,7 @@ export function generateExampleContent(state: WizardState): string {
   const variantId = state.selectedProductIds[0] ?? 'your-variant-id';
 
   return `import express from "express";
-import { createBilling } from "@yosefhayim/lemonsqueezy-billing";
+import { createBilling } from "fresh-squeezy";
 import { billingConfig } from "./billing-config";
 
 const app = express();
