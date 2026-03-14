@@ -522,7 +522,7 @@ class BillingWizard {
     lines.push(`import type { BillingConfig, PurchaseEvent, RefundEvent, SubscriptionEvent, PaymentFailedEvent, LicenseKeyEvent, SubscriptionPausedEvent, SubscriptionResumedEvent, SubscriptionPaymentSuccessEvent, SubscriptionPaymentRecoveredEvent } from "./types";`);
     lines.push(``);
     lines.push(`export const billingConfig: BillingConfig = {`);
-    lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY || "${ this.state.apiKey}",`);
+    lines.push(`  apiKey: process.env.LEMON_SQUEEZY_API_KEY ?? (() => { throw new Error("LEMON_SQUEEZY_API_KEY is required"); })(),`);
     lines.push(`  storeId: "${ this.state.selectedStoreIds[0]}",`);
     lines.push(`  webhookSecret: "${ this.state.webhookSecret}",`);
     lines.push(`  cachePath: "${ this.state.cachePath}",`);
@@ -674,7 +674,7 @@ class BillingWizard {
 
   private generateExampleContent(): string {
     return `import express from "express";
-import { createBilling } from "@yosefhayim/lemonsqueezy-billing";
+import { createBilling } from "@yosefhayim/fresh-squeezy";
 import { billingConfig } from "./billing-config";
 
 const app = express();

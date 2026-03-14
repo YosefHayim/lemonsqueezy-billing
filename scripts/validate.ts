@@ -4,8 +4,8 @@ import { readFileSync, unlinkSync, existsSync } from "node:fs";
 
 const API_KEY = process.env.LS_API_KEY;
 const WEBHOOK_SECRET = process.env.LS_WEBHOOK_SECRET ?? "test-webhook-secret";
-const CACHE_PATH = "/tmp/lemonsqueezy-billing-validate-cache.json";
-const LOG_PATH = "/tmp/lemonsqueezy-billing-validate.log";
+const CACHE_PATH = "/tmp/fresh-squeezy-validate-cache.json";
+const LOG_PATH = "/tmp/fresh-squeezy-validate.log";
 
 function pass(label: string) { console.log(`  ✅ ${label}`); }
 function fail(label: string, error: string) { console.log(`  ❌ ${label}: ${error}`); }
@@ -141,7 +141,7 @@ async function validateLive() {
   cleanup();
 
   // Force fresh cache by using a different cache path for live tests
-  const liveCachePath = "/tmp/lemonsqueezy-billing-live-cache.json";
+  const liveCachePath = "/tmp/fresh-squeezy-live-cache.json";
   
   const billing = await createBilling({
     apiKey: API_KEY,
@@ -202,7 +202,7 @@ async function validateLive() {
 }
 
 async function main() {
-  console.log("\ud83c\udf4b lemonsqueezy-billing \u2014 Validation Suite\n");
+  console.log("\ud83c\udf4b fresh-squeezy \u2014 Validation Suite\n");
   console.log("=".repeat(50));
   await validateOffline();
   await validateLive();

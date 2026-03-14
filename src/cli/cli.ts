@@ -9,7 +9,7 @@ function printHelp(): void {
   console.log(`
 Lemon Squeezy Billing CLI
 
-Usage: lemonsqueezy-billing <command>
+Usage: fresh-squeezy <command>
 
 Commands:
   wizard     Run interactive setup wizard
@@ -17,8 +17,8 @@ Commands:
   help      Show this help message
 
 Examples:
-  npx lemonsqueezy-billing wizard
-  npx lemonsqueezy-billing validate
+  npx fresh-squeezy wizard
+  npx fresh-squeezy validate
 `);
 }
 

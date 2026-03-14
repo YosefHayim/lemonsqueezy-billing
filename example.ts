@@ -1,13 +1,18 @@
 import express from "express";
-import { createBilling } from "@yosefhayim/lemonsqueezy-billing";
-import { billingConfig } from "./billing-config";
+import { createBilling } from "fresh-squeezy";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 async function setupBilling() {
   try {
-    const billing = await createBilling(billingConfig);
+    const billing = await createBilling({
+      apiKey: process.env.LEMON_SQUEEZY_API_KEY ,
+      storeId: "1234567890",
+      webhookSecret: "1234567890",
+      cachePath: "./cache.json",
+      logger: { filePath: "./logs.txt" },
+    });
     
     console.log("[+] Billing setup complete!");
     console.log("Available stores:", billing.stores.map(s => s.name));

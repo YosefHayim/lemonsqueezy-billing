@@ -9,8 +9,8 @@ Open an issue first. Describe what you want to change and why. This saves everyo
 ## Setup
 
 ```bash
-git clone https://github.com/yosefhayim/lemonsqueezy-billing.git
-cd lemonsqueezy-billing
+git clone https://github.com/yosefhayim/fresh-squeezy.git
+cd fresh-squeezy
 pnpm install
 ```
 
