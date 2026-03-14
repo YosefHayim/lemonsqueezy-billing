@@ -24,7 +24,7 @@ export interface Billing {
 
   validateLicense: (key: string) => Promise<{ valid: boolean; details?: LicenseKeyEvent }>;
   getLicenseDetails: (key: string) => Promise<LicenseKeyEvent | null>;
-  activateLicense: (key: string, instanceId?: string) => Promise<boolean>;
+  activateLicense: (key: string, instanceName?: string) => Promise<{ activated: boolean; instanceId?: string }>;
   deactivateLicense: (key: string, instanceId?: string) => Promise<boolean>;
 
   getCustomerByEmail: (email: string) => Promise<CustomerLookup | null>;

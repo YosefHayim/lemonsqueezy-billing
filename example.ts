@@ -13,9 +13,9 @@ async function setupBilling() {
     console.log("Available stores:", billing.stores.map(s => s.name));
     console.log("Available plans:", billing.plans.length);
 
-    const variantId = billing.plans[0]?.variantId;
+    const variantId = billing.plans.find(p => p.status === "published")?.variantId;
     if (!variantId) {
-      throw new Error("No billing plans found. Publish at least one variant in your Lemon Squeezy dashboard.");
+      throw new Error("No published billing plans found. Publish at least one variant in your Lemon Squeezy dashboard.");
     }
 
     const checkoutUrl = await billing.createCheckout({

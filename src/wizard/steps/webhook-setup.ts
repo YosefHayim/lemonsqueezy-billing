@@ -65,7 +65,7 @@ export async function stepWebhookSetup(): Promise<{
       }
 
       console.log('[+] Webhook configuration saved');
-      return { webhookUrl, webhookEvents };
+      return { webhookUrl: webhookUrl.trim(), webhookEvents };
     }
   } catch (error) {
     if (isExitPromptError(error)) {

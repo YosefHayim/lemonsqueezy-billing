@@ -105,7 +105,7 @@ export async function stepApiKey(
         callbacks: { onPurchase: async () => {} },
       });
       loading.stop(`[+] Found ${billing.stores.length} store(s)`);
-      return { apiKey: manualKey, isSandbox: false, stores: billing.stores };
+      return { apiKey: manualKey, isSandbox, stores: billing.stores };
     } catch {
       loading.stop('[x] Invalid API key');
       throw new Error('API key validation failed');
