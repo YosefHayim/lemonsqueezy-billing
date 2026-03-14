@@ -72,8 +72,13 @@ export async function runPhaseCustomer(
         if (completed) {
           const { input } = await import('@inquirer/prompts');
           const enteredOrderId = await input({
-            message: 'Enter the Order ID from the completed checkout (leave blank to skip):',
+            message: 'Enter the Order ID (numeric, from LS Dashboard → Orders, e.g. 1234567). Leave blank to skip:',
             default: '',
+            validate: (v) => {
+              const t = v.trim();
+              if (!t) return true;
+              return /^\d+$/.test(t) || 'Order ID must be digits only (find it in your LS dashboard under Orders)';
+            },
           });
           const trimmedOrderId = enteredOrderId.trim();
           if (trimmedOrderId) {

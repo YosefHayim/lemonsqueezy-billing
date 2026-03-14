@@ -1,5 +1,6 @@
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { BILLING_DIR } from '../../core/paths.js';
 import type { WizardState } from '../state.js';
 import { generateConfigContent } from '../utils/config-content.js';
 import { generateExampleContent } from '../utils/example-content.js';
@@ -35,21 +36,23 @@ export async function stepGenerateFiles(
     const configContent = generateConfigContent(state);
     const exampleContent = generateExampleContent(state);
 
+    const billingDir = resolve(process.cwd(), BILLING_DIR);
     const configPath = resolve(process.cwd(), WIZARD_CONFIG_FILE);
     const examplePath = resolve(process.cwd(), WIZARD_EXAMPLE_FILE);
 
+    await mkdir(billingDir, { recursive: true });
     await Promise.all([
       writeFile(configPath, configContent, 'utf8'),
       writeFile(examplePath, exampleContent, 'utf8'),
     ]);
 
-    console.log('\n[+] Files generated successfully!');
+    console.log(`\n[+] Files generated in ${BILLING_DIR}/`);
     console.log(`    ${configPath}`);
     console.log(`    ${examplePath}`);
 
     console.log('\nNext steps:');
     console.log('1. Review the generated files');
-    console.log('2. Run: npx tsx example.ts');
+    console.log(`2. Run: npx tsx ${WIZARD_EXAMPLE_FILE}`);
     console.log('3. Start building your billing integration!');
 
     await runValidationTests(loading);

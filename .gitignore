@@ -1,9 +1,7 @@
 node_modules
 dist
 .env
-billing.log
-billing-cache.json
-.billing-cache.json
+.billing/
 agents
 docs
 .cursorrules
@@ -21,7 +19,7 @@ docs
 !scripts/ls-changelog/state.md
 scripts/ls-changelog/changelog/
 
-billing-config.ts
+
 test-workflows.sh
 pr-reviews
 scripts/scrape-pr-reviews.ts

@@ -1,5 +1,12 @@
 import { LoadingAnimation } from '../components/loading.js';
 
+function isApiError(result: unknown): boolean {
+  if (typeof result !== 'object' || result === null) return false;
+  const r = result as Record<string, unknown>;
+  return (typeof r['statusCode'] === 'number' && r['statusCode'] >= 400) ||
+         (r['error'] !== null && r['error'] !== undefined);
+}
+
 export async function loggedCall<T>(
   label: string,
   fn: () => Promise<T>,
@@ -8,7 +15,8 @@ export async function loggedCall<T>(
   loading.start(label);
   try {
     const result = await fn();
-    loading.stop(`[+] ${label}`);
+    const prefix = isApiError(result) ? '[x]' : '[+]';
+    loading.stop(`${prefix} ${label}`);
     console.log(JSON.stringify(result, null, 2));
     return result;
   } catch (error) {

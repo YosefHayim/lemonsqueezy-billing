@@ -28,6 +28,12 @@ function generateSecret(): string {
   return 'ls_'.concat(randomBytes(18).toString('hex'));
 }
 
+function envId(key: string): string | undefined {
+  const value = process.env[key];
+  if (!value || /^your_|_here$/.test(value)) return undefined;
+  return value;
+}
+
 export async function runWizard(): Promise<void> {
   console.log(banner);
   const loading = new LoadingAnimation();
@@ -84,9 +90,10 @@ export async function runWizard(): Promise<void> {
           apiKey,
           storeId: selectedStoreIds[0] ?? '',
           variantId,
-          orderId: process.env['LS_TEST_ORDER_ID'],
-          subscriptionId: process.env['LS_TEST_SUBSCRIPTION_ID'],
-          licenseKey: process.env['LS_TEST_LICENSE_KEY'],
+          webhookUrl: state.webhookUrl,
+          orderId: envId('LS_TEST_ORDER_ID'),
+          subscriptionId: envId('LS_TEST_SUBSCRIPTION_ID'),
+          licenseKey: envId('LS_TEST_LICENSE_KEY'),
         };
         await runAllPhases(config, loading);
       }

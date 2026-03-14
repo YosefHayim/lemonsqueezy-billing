@@ -85,7 +85,7 @@ export async function runPhaseSetup(
         createDiscount({
           storeId: config.storeId,
           name: 'Test Discount',
-          code: 'WIZARD-TEST',
+          code: 'WIZARDTEST',
           amount: 10,
           amountType: 'percent',
         }),
