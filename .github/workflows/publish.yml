@@ -56,6 +56,10 @@ jobs:
         if: steps.check.outputs.needs_publish == 'true'
         run: pnpm run build
 
+      - name: Update npm for trusted publishing support
+        if: steps.check.outputs.needs_publish == 'true'
+        run: npm install -g npm@latest
+
       - name: Tag and create GitHub Release
         if: steps.check.outputs.needs_publish == 'true'
         env:
@@ -70,6 +74,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.check.outputs.needs_publish == 'true'
-        run: pnpm publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks --access public --provenance
