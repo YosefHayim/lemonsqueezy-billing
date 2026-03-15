@@ -75,6 +75,8 @@ export async function runGrimoireWizard(): Promise<void> {
     isSandbox = availableKeys[0].isSandbox;
   }
 
+  const loading = new LoadingAnimation();
+
   try {
     const answers = await runWizard(config, {
       configFilePath: configPath,
@@ -108,25 +110,27 @@ export async function runGrimoireWizard(): Promise<void> {
         if (stepId === 'product-selection' && step.type === 'multiselect') {
           const storeIds = (wizardState.answers['store-selection'] as string[]) ?? [];
 
+          loading.start('Fetching products');
           allProducts = [];
           for (const storeId of storeIds) {
             try {
               const products = await fetchProducts(storeId);
               allProducts.push(...products);
             } catch {
-              console.log(`  [x] Failed to fetch products for store ${storeId}`);
+              loading.stop(`[x] Failed to fetch products for store ${storeId}`);
             }
           }
 
           if (allProducts.length === 0) {
-            console.log('  [x] No products found. Create products in your Lemon Squeezy dashboard.');
+            loading.stop('[x] No products found');
             step.options = [{ value: '__none__', label: 'No products found' }];
             return;
           }
 
           const plans = flattenPlans(allProducts);
+          loading.stop(`[+] Found ${plans.length} product(s)`);
+
           if (plans.length === 0) {
-            console.log('  [x] No product variants found.');
             step.options = [{ value: '__none__', label: 'No variants found' }];
             return;
           }
@@ -145,15 +149,16 @@ export async function runGrimoireWizard(): Promise<void> {
             wizardState.answers['api-key'] = envKey.value;
             isSandbox = envKey.isSandbox;
 
+            loading.start('Validating API key');
             try {
               const billing = await createBilling({
                 apiKey: envKey.value,
                 callbacks: { onPurchase: async () => {} },
               });
               validatedStores = billing.stores;
-              console.log(`  [+] Validated ${envKey.envName} — found ${billing.stores.length} store(s)`);
+              loading.stop(`[+] Found ${billing.stores.length} store(s)`);
             } catch {
-              console.log(`  [x] API key validation failed for ${envKey.envName}`);
+              loading.stop('[x] API key validation failed');
             }
           }
         }
@@ -164,14 +169,17 @@ export async function runGrimoireWizard(): Promise<void> {
           const apiKey = value as string;
           if (!apiKey) return 'API key is required';
 
+          loading.start('Validating API key');
           try {
             const billing = await createBilling({
               apiKey,
               callbacks: { onPurchase: async () => {} },
             });
             validatedStores = billing.stores;
+            loading.stop(`[+] Found ${billing.stores.length} store(s)`);
             return null;
           } catch {
+            loading.stop('[x] API key validation failed');
             return 'API key validation failed. Please enter a valid key.';
           }
         }
@@ -254,7 +262,6 @@ export async function runGrimoireWizard(): Promise<void> {
 
     // ─── Validation tests ───────────────────────────────────────
 
-    const loading = new LoadingAnimation();
     console.log('\nRunning validation tests...');
 
     try {
