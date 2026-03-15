@@ -1,6 +1,6 @@
 # Changelog Monitoring
 
-The `monitor-changelog.yml` workflow runs daily at 12:00 UTC and opens a pull request whenever the [Lemon Squeezy API changelog](https://docs.lemonsqueezy.com/api/getting-started/changelog) publishes a new entry.
+The `monitor-changelog.yml` workflow runs weekly on Mondays at 12:00 UTC and opens a pull request whenever the [Lemon Squeezy API changelog](https://docs.lemonsqueezy.com/api/getting-started/changelog) publishes a new entry.
 
 ## How it works
 
