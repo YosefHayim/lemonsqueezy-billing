@@ -1,6 +1,7 @@
 import {
   createCustomer,
   updateCustomer,
+  getCustomer,
   createCheckout,
 } from '@lemonsqueezy/lemonsqueezy.js';
 import type { TestEnvConfig } from './config.js';
@@ -43,6 +44,14 @@ export async function runPhaseCustomer(
     await loggedCall(
       '2.2 updateCustomer',
       () => updateCustomer(customerId, { name: 'Wizard Test User Updated' }),
+      loading
+    );
+  } catch { /* empty */ }
+
+  try {
+    await loggedCall(
+      '2.4 getCustomer',
+      () => getCustomer(customerId),
       loading
     );
   } catch { /* empty */ }

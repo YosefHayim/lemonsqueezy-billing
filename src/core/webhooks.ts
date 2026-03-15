@@ -34,6 +34,8 @@ export function createWebhookManagement(storeId: string): WebhookManagement {
         id: w.id,
         url: w.attributes.url as string,
         events: w.attributes.events as string[],
+        lastSentAt: (w.attributes.last_sent_at as string) ?? null,
+        testMode: (w.attributes.test_mode as boolean) ?? false,
         createdAt: w.attributes.created_at as string,
       }));
     },
@@ -47,6 +49,8 @@ export function createWebhookManagement(storeId: string): WebhookManagement {
         id: w.id,
         url: w.attributes.url as string,
         events: w.attributes.events as string[],
+        lastSentAt: (w.attributes.last_sent_at as string) ?? null,
+        testMode: (w.attributes.test_mode as boolean) ?? false,
         createdAt: w.attributes.created_at as string,
       };
     },

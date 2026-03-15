@@ -1,6 +1,27 @@
 import type { LicenseKeyEvent } from '../license/types.js';
 import type { CustomerLookup } from '../cache/types.js';
 
+export interface Affiliate {
+  id: string;
+  storeId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  shareDomain: string;
+  status: 'active' | 'pending' | 'disabled';
+  applicationNote: string | null;
+  products: unknown | null;
+  totalEarnings: number;
+  unpaidEarnings: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AffiliateManagement {
+  listAffiliates: (storeId?: string) => Promise<Affiliate[]>;
+  getAffiliate: (affiliateId: string) => Promise<Affiliate | null>;
+}
+
 export interface SubscriptionManagement {
   pauseSubscription: (subscriptionId: string, reason?: string) => Promise<void>;
   resumeSubscription: (subscriptionId: string) => Promise<void>;
@@ -40,18 +61,43 @@ export interface CustomerManagement {
   archiveCustomer: (customerId: string) => Promise<void>;
 }
 
+export interface WebhookInfo {
+  id: string;
+  url: string;
+  events: string[];
+  lastSentAt: string | null;
+  testMode: boolean;
+  createdAt: string;
+}
+
 export interface WebhookManagement {
   createWebhook: (url: string, events: string[], secret?: string) => Promise<string>;
   deleteWebhook: (webhookId: string) => Promise<void>;
-  listWebhooks: () => Promise<Array<{ id: string; url: string; events: string[]; createdAt: string }>>;
-  getWebhook: (webhookId: string) => Promise<{ id: string; url: string; events: string[]; createdAt: string } | null>;
+  listWebhooks: () => Promise<WebhookInfo[]>;
+  getWebhook: (webhookId: string) => Promise<WebhookInfo | null>;
   updateWebhook: (webhookId: string, url?: string, events?: string[]) => Promise<void>;
 }
 
+export interface StoreInfoDetail {
+  id: string;
+  name: string;
+  slug: string;
+  currency: string;
+  domain: string;
+  url: string;
+}
+
+export interface UserInfo {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
 export interface StoreManagement {
-  getStore: (storeId: string) => Promise<{ id: string; name: string; slug: string; currency: string } | null>;
-  listStores: () => Promise<Array<{ id: string; name: string; slug: string; currency: string }>>;
-  getAuthenticatedUser: () => Promise<{ id: string; name: string; email: string } | null>;
+  getStore: (storeId: string) => Promise<StoreInfoDetail | null>;
+  listStores: () => Promise<StoreInfoDetail[]>;
+  getAuthenticatedUser: () => Promise<UserInfo | null>;
 }
 
 export interface OrderManagement {

@@ -1,6 +1,8 @@
 import {
   getOrder,
   getOrderItem,
+  listOrders,
+  listOrderItems,
 } from '@lemonsqueezy/lemonsqueezy.js';
 import type { TestEnvConfig } from './config.js';
 import { LoadingAnimation } from '../components/loading.js';
@@ -35,6 +37,24 @@ export async function runPhaseOrder(
         loading
       );
       updates.orderItemId = orderItemId;
+    } catch { /* empty */ }
+  }
+
+  try {
+    await loggedCall(
+      '3.3 listOrders',
+      () => listOrders({ filter: { storeId: config.storeId } }),
+      loading
+    );
+  } catch { /* empty */ }
+
+  if (config.orderId) {
+    try {
+      await loggedCall(
+        '3.4 listOrderItems',
+        () => listOrderItems({ filter: { orderId: config.orderId! } }),
+        loading
+      );
     } catch { /* empty */ }
   }
 

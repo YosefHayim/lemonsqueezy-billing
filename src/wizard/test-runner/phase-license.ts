@@ -69,5 +69,21 @@ export async function runPhaseLicense(
     );
   } catch { /* empty */ }
 
+  try {
+    await loggedCall(
+      '5.5 listLicenseKeys',
+      () => lkm.listLicenseKeys(),
+      loading
+    );
+  } catch { /* empty */ }
+
+  try {
+    await loggedCall(
+      '5.6 listLicenseKeyInstances',
+      () => lkm.listLicenseKeyInstances(),
+      loading
+    );
+  } catch { /* empty */ }
+
   return {};
 }

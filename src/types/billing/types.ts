@@ -43,13 +43,20 @@ export type WebhookEvent =
   | AnySubscriptionEvent
   | LicenseKeyEvent;
 
+// ─── Webhook Meta ─────────────────────────────────────────────────────────────
+
+export interface WebhookMeta {
+  isTest: boolean;
+  eventId: string;
+}
+
 // ─── Callbacks ───────────────────────────────────────────────────────────────
 
 export interface BillingCallbacks {
-  onOrder: (event: OrderEvent, method: OrderMethod) => Promise<void>;
-  onSubscription?: (event: AnySubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
-  onLicenseKey?: (event: LicenseKeyEvent, method: LicenseMethod) => Promise<void>;
-  onWebhook?: (eventType: WebhookMethod, event: WebhookEvent) => Promise<void>;
+  onOrder: (event: OrderEvent, method: OrderMethod, meta: WebhookMeta) => Promise<void>;
+  onSubscription?: (event: AnySubscriptionEvent, method: SubscriptionMethod, meta: WebhookMeta) => Promise<void>;
+  onLicenseKey?: (event: LicenseKeyEvent, method: LicenseMethod, meta: WebhookMeta) => Promise<void>;
+  onWebhook?: (eventType: WebhookMethod, event: WebhookEvent, meta: WebhookMeta) => Promise<void>;
 }
 
 export interface CheckoutParams {

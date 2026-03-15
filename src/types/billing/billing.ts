@@ -15,6 +15,7 @@ import type {
   DiscountManagement,
   CatalogManagement,
   CheckoutManagement,
+  AffiliateManagement,
 } from '../management/types.js';
 
 export interface Billing extends
@@ -26,7 +27,8 @@ export interface Billing extends
   OrderManagement,
   DiscountManagement,
   CatalogManagement,
-  CheckoutManagement {
+  CheckoutManagement,
+  AffiliateManagement {
   stores: StoreInfo[];
   plans: Plan[];
   createCheckout: (params: CheckoutParams) => Promise<string>;

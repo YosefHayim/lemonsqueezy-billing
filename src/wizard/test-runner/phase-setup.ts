@@ -7,6 +7,11 @@ import {
   createWebhook,
   createDiscount,
   lemonSqueezySetup,
+  listStores,
+  listWebhooks,
+  listDiscounts,
+  getWebhook,
+  listCheckouts,
 } from '@lemonsqueezy/lemonsqueezy.js';
 import type { TestEnvConfig } from './config.js';
 import { LoadingAnimation } from '../components/loading.js';
@@ -78,6 +83,24 @@ export async function runPhaseSetup(
     console.log('[-] Skipping 1.6 createWebhook: no webhookUrl in config');
   }
 
+  if (updates.webhookId) {
+    try {
+      await loggedCall(
+        '1.6b getWebhook',
+        () => getWebhook(updates.webhookId!),
+        loading
+      );
+    } catch { /* empty */ }
+  }
+
+  try {
+    await loggedCall(
+      '1.6c listCheckouts',
+      () => listCheckouts({ filter: { storeId: config.storeId } }),
+      loading
+    );
+  } catch { /* empty */ }
+
   try {
     const discount = await loggedCall(
       '1.7 createDiscount',
@@ -92,6 +115,26 @@ export async function runPhaseSetup(
       loading
     );
     updates.discountId = discount.data?.data?.id;
+  } catch { /* empty */ }
+
+  try {
+    await loggedCall('1.8 listStores', () => listStores(), loading);
+  } catch { /* empty */ }
+
+  try {
+    await loggedCall(
+      '1.9 listWebhooks',
+      () => listWebhooks({ filter: { storeId: config.storeId } }),
+      loading
+    );
+  } catch { /* empty */ }
+
+  try {
+    await loggedCall(
+      '1.10 listDiscounts',
+      () => listDiscounts({ filter: { storeId: config.storeId } }),
+      loading
+    );
   } catch { /* empty */ }
 
   return updates;

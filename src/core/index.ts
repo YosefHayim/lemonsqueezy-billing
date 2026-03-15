@@ -30,7 +30,12 @@ export type {
   LicenseKeyManagement,
   CustomerManagement,
   WebhookManagement,
+  WebhookInfo,
   StoreManagement,
+  StoreInfoDetail,
+  UserInfo,
+  Affiliate,
+  AffiliateManagement,
   OrderManagement,
   DiscountManagement,
   CatalogManagement,
@@ -52,5 +57,6 @@ export { createOrderManagement } from "./orders.js";
 export { createDiscountManagement } from "./discounts.js";
 export { createCatalogManagement } from "./products-catalog.js";
 export { createCheckoutManagement } from "./checkouts-management.js";
+export { createAffiliateManagement } from "./affiliates.js";
 export { createDedupBackend, InMemoryDedupBackend, RedisDedupBackend, DatabaseDedupBackend, type RedisClient, type DatabaseClient } from "./dedup.js";
 export { healthCheck } from "./health.js";

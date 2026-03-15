@@ -1,0 +1,9 @@
+scripts/
+ls-changelog/
+.github/
+.husky/
+docs/
+agents/
+test-workflows.sh
+src/wizard/
+src/cli/

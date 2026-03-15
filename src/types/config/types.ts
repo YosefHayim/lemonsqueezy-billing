@@ -46,4 +46,5 @@ export interface BillingConfig {
   logger?: BillingLoggerConfig;
   callbacks: BillingCallbacks;
   dedup?: DedupConfig;
+  skipTestEvents?: boolean;
 }

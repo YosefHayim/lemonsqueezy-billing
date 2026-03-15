@@ -18,6 +18,7 @@ import { createOrderManagement } from "./orders.js";
 import { createDiscountManagement } from "./discounts.js";
 import { createCatalogManagement } from "./products-catalog.js";
 import { createCheckoutManagement } from "./checkouts-management.js";
+import { createAffiliateManagement } from "./affiliates.js";
 
 export async function createBilling(config: BillingConfig): Promise<Billing> {
   const logger = createLogger(config.logger);
@@ -80,6 +81,7 @@ export async function createBilling(config: BillingConfig): Promise<Billing> {
   const discountManagement = createDiscountManagement();
   const catalogManagement = createCatalogManagement();
   const checkoutManagement = createCheckoutManagement();
+  const affiliateManagement = createAffiliateManagement();
 
   const billing: Billing = {
     stores,
@@ -181,6 +183,10 @@ export async function createBilling(config: BillingConfig): Promise<Billing> {
     // Checkout Management
     getCheckout: checkoutManagement.getCheckout,
     listCheckouts: checkoutManagement.listCheckouts,
+
+    // Affiliate Management
+    listAffiliates: affiliateManagement.listAffiliates,
+    getAffiliate: affiliateManagement.getAffiliate,
 
     // Deduplication
     dedupBackend,

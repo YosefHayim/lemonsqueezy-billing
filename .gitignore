@@ -12,12 +12,12 @@ docs
 # Dot-prefixed files and folders (keep .gitignore, .husky, .github)
 .*
 !.gitignore
+!.npmignore
 !.husky/
 !.husky/**
 !.github/
 !.github/**
 !scripts/ls-changelog/state.md
-scripts/ls-changelog/changelog/
 
 
 test-workflows.sh
