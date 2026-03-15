@@ -2,16 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type {
   BillingCallbacks,
   WebhookPayload,
-  PurchaseEvent,
-  RefundEvent,
+  OrderEvent,
+  OrderMethod,
   SubscriptionEvent,
+  SubscriptionPaymentSuccessEvent,
+  SubscriptionPaymentRecoveredEvent,
   PaymentFailedEvent,
   SubscriptionPausedEvent,
   SubscriptionResumedEvent,
-  SubscriptionPaymentSuccessEvent,
-  SubscriptionPaymentRecoveredEvent,
   SubscriptionMethod,
-  SubscriptionPaymentMethod,
   LicenseKeyEvent,
   LicenseMethod,
   WebhookMethod,
@@ -70,7 +69,7 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
 
     switch (eventName) {
       case "order_created": {
-        const event: PurchaseEvent = {
+        const event: OrderEvent = {
           userId,
           email,
           orderId: dataId,
@@ -79,18 +78,16 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           productName: String(attrs.product_name ?? ""),
           price: Number(attrs.total ?? 0),
         };
-        await callbacks.onPurchase(event);
+        await callbacks.onOrder(event, "purchase");
         await dispatchWebhook(eventName, event);
-        return { dispatched: "onPurchase", skipped: false };
+        return { dispatched: "onOrder:purchase", skipped: false };
       }
 
       case "order_refunded": {
-        const event: RefundEvent = { userId, email, orderId: dataId };
-        if (callbacks.onRefund) {
-          await callbacks.onRefund(event);
-        }
+        const event: OrderEvent = { userId, email, orderId: dataId };
+        await callbacks.onOrder(event, "refund");
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onRefund ? "onRefund" : null, skipped: false };
+        return { dispatched: "onOrder:refund", skipped: false };
       }
 
       case "subscription_created":
@@ -104,21 +101,6 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
         }
         await dispatchWebhook(eventName, event);
         return { dispatched: callbacks.onSubscription ? `onSubscription:${method}` : null, skipped: false };
-      }
-
-      case "subscription_payment_failed": {
-        const event: PaymentFailedEvent = {
-          userId,
-          email,
-          subscriptionId: dataId,
-          customerId: String(attrs.customer_id ?? ""),
-          reason: String(attrs.status_formatted ?? "Payment failed"),
-        };
-        if (callbacks.onPaymentFailed) {
-          await callbacks.onPaymentFailed(event);
-        }
-        await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onPaymentFailed ? "onPaymentFailed" : null, skipped: false };
       }
 
       case "subscription_paused": {
@@ -157,14 +139,16 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           email,
           subscriptionId: dataId,
           customerId: String(attrs.customer_id ?? ""),
+          variantId: String(attrs.variant_id ?? ""),
+          status: String(attrs.status ?? ""),
           orderId: String(attrs.order_id ?? ""),
           amount: Number(attrs.total ?? 0),
         };
-        if (callbacks.onSubscriptionPayment) {
-          await callbacks.onSubscriptionPayment(event, "success");
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, "payment_success");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionPayment ? "onSubscriptionPayment:success" : null, skipped: false };
+        return { dispatched: callbacks.onSubscription ? "onSubscription:payment_success" : null, skipped: false };
       }
 
       case "subscription_payment_recovered": {
@@ -173,14 +157,33 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           email,
           subscriptionId: dataId,
           customerId: String(attrs.customer_id ?? ""),
+          variantId: String(attrs.variant_id ?? ""),
+          status: String(attrs.status ?? ""),
           orderId: String(attrs.order_id ?? ""),
           amount: Number(attrs.total ?? 0),
         };
-        if (callbacks.onSubscriptionPayment) {
-          await callbacks.onSubscriptionPayment(event, "recovered");
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, "payment_recovered");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onSubscriptionPayment ? "onSubscriptionPayment:recovered" : null, skipped: false };
+        return { dispatched: callbacks.onSubscription ? "onSubscription:payment_recovered" : null, skipped: false };
+      }
+
+      case "subscription_payment_failed": {
+        const event: PaymentFailedEvent = {
+          userId,
+          email,
+          subscriptionId: dataId,
+          customerId: String(attrs.customer_id ?? ""),
+          variantId: String(attrs.variant_id ?? ""),
+          status: String(attrs.status ?? ""),
+          reason: String(attrs.status_formatted ?? "Payment failed"),
+        };
+        if (callbacks.onSubscription) {
+          await callbacks.onSubscription(event, "payment_failed");
+        }
+        await dispatchWebhook(eventName, event);
+        return { dispatched: callbacks.onSubscription ? "onSubscription:payment_failed" : null, skipped: false };
       }
 
       case "license_key_created": {
@@ -196,10 +199,10 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           maxActivations: Number(attrs.activations_max ?? 0),
         };
         if (callbacks.onLicenseKey) {
-          await callbacks.onLicenseKey("created", event);
+          await callbacks.onLicenseKey(event, "created");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onLicenseKey ? "onLicenseKey" : null, skipped: false };
+        return { dispatched: callbacks.onLicenseKey ? "onLicenseKey:created" : null, skipped: false };
       }
 
       case "license_key_updated": {
@@ -215,10 +218,10 @@ export function createWebhookHandler(callbacks: BillingCallbacks, dedupTtlMs?: n
           maxActivations: Number(attrs.activations_max ?? 0),
         };
         if (callbacks.onLicenseKey) {
-          await callbacks.onLicenseKey("updated", event);
+          await callbacks.onLicenseKey(event, "updated");
         }
         await dispatchWebhook(eventName, event);
-        return { dispatched: callbacks.onLicenseKey ? "onLicenseKey" : null, skipped: false };
+        return { dispatched: callbacks.onLicenseKey ? "onLicenseKey:updated" : null, skipped: false };
       }
 
       default:

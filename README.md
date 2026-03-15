@@ -18,23 +18,25 @@ npm install fresh-squeezy @lemonsqueezy/lemonsqueezy.js
 
 ## Quick Start
 
-```ts
+```typescript
 import { createBilling } from "fresh-squeezy";
 
 const billing = await createBilling({
   apiKey: process.env.LS_API_KEY!,
   webhookSecret: process.env.LS_WEBHOOK_SECRET!,
   callbacks: {
-    onPurchase: async (event) => {
-      await db.grantAccess(event.userId); // event.orderId, .email, .productName, .price
+    onOrder: async (event, method) => {
+      if (method === 'purchase') await db.grantAccess(event.userId);
+      if (method === 'refund')   await db.revokeAccess(event.userId);
     },
     onSubscription: async (event, method) => {
-      // method: 'created' | 'updated' | 'cancelled' | 'expired' | 'paused' | 'resumed'
-      if (method === "cancelled") await db.revokeAccess(event.userId);
+      if (method === 'created')          await db.startSubscription(event.userId);
+      if (method === 'cancelled')        await db.cancelSubscription(event.userId);
+      if (method === 'payment_success')  await db.extendAccess(event.userId, event.amount);
+      if (method === 'payment_failed')   await notifications.sendPaymentFailed(event.email);
     },
-    onSubscriptionPayment: async (event, method) => {
-      // method: 'success' | 'recovered'
-      if (method === "success") await db.extendAccess(event.userId);
+    onLicenseKey: async (event, method) => {
+      if (method === 'created') await db.storeLicense(event.userId, event.key);
     },
   },
 });
@@ -59,21 +61,21 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
 ## Setup Wizard
 
-The fastest way to get started — interactive CLI that validates your keys, picks your products, and generates ready-to-run config files:
+The fastest way to get started — auto-discovers your stores and products, generates ready-to-run config files, and optionally runs API lifecycle validation tests:
 
 ```bash
 npx fresh-squeezy-billing wizard
 ```
 
-Generates `.billing/billing-config.ts` and `.billing/example.ts` in your project.
+Generates `.billing/billing-config.ts` and `.billing/example.ts`. Previous answers are cached to `.billing/wizard-cache.json` for fast re-runs.
 
-> Built with [grimoire-wizard](https://github.com/YosefHayim/grimoire) — config-driven CLI wizard framework. The wizard steps are defined in YAML, with dynamic API integration via grimoire's programmatic hooks.
+> Built with [grimoire-wizard](https://github.com/YosefHayim/grimoire) — config-driven CLI wizard framework.
 
 ---
 
 ## Configuration
 
-```ts
+```typescript
 interface BillingConfig {
   apiKey: string;
   webhookSecret?: string;
@@ -91,58 +93,145 @@ interface BillingConfig {
 
 ## Callbacks
 
-```ts
+4 callbacks, all using the same `(event, method)` pattern:
+
+```typescript
 interface BillingCallbacks {
-  onPurchase:           (event: PurchaseEvent) => Promise<void>;                                          // required
-  onRefund?:            (event: RefundEvent) => Promise<void>;
-  onSubscription?:      (event: AnySubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
-  onSubscriptionPayment?: (event: ..., method: 'success' | 'recovered') => Promise<void>;
-  onPaymentFailed?:     (event: PaymentFailedEvent) => Promise<void>;
-  onLicenseKey?:        (method: 'created' | 'updated', event: LicenseKeyEvent) => Promise<void>;
-  onWebhook?:           (eventType: string, event: WebhookEvent) => Promise<void>;                       // catch-all
+  // required — handles purchase and refund
+  onOrder: (event: OrderEvent, method: 'purchase' | 'refund') => Promise<void>;
+
+  // optional — all subscription lifecycle + payment events
+  onSubscription?: (event: SubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
+
+  // optional — license key created or updated
+  onLicenseKey?: (event: LicenseKeyEvent, method: 'created' | 'updated') => Promise<void>;
+
+  // optional — catch-all for every raw webhook event
+  onWebhook?: (eventType: string, event: WebhookEvent) => Promise<void>;
 }
 
-type SubscriptionMethod = 'created' | 'updated' | 'cancelled' | 'expired' | 'paused' | 'resumed';
+type SubscriptionMethod =
+  | 'created' | 'updated' | 'cancelled' | 'expired'   // lifecycle
+  | 'paused'  | 'resumed'                              // pausing
+  | 'payment_success' | 'payment_recovered' | 'payment_failed'; // payments
 ```
 
 ---
 
 ## API Reference
 
-```ts
-// Core
+### Core
+```typescript
 billing.stores                                  // StoreInfo[]
 billing.plans                                   // Plan[]
-billing.createCheckout(params)                  // Promise<string>  — checkout URL
-billing.verifyWebhook(rawBody, signature)       // boolean
-billing.handleWebhook(payload)                  // Promise<void>
-billing.refreshPlans()                          // Promise<void>
-billing.getCustomerPortal(customerId)           // Promise<string>  — portal URL
+billing.createCheckout(params)                  // → checkout URL
+billing.verifyWebhook(rawBody, signature)       // → boolean
+billing.handleWebhook(payload)                  // dispatches to callbacks
+billing.refreshPlans()                          // refresh cached plans
+billing.getCustomerPortal(customerId)           // → portal URL
 billing.getExpressRouter(options)               // Express Router
+billing.healthCheck()                           // → HealthCheckResult
+```
 
-// Subscriptions
+### Stores & Auth
+```typescript
+billing.getStore(storeId)                       // → store details
+billing.listStores()                            // → all stores
+billing.getAuthenticatedUser()                  // → API key owner
+```
+
+### Subscriptions
+```typescript
+billing.getSubscription(id)
+billing.listSubscriptions(filter?)
 billing.pauseSubscription(id, reason?)
 billing.resumeSubscription(id)
 billing.cancelSubscription(id, immediately?)
 billing.changeSubscriptionVariant(id, variantId)
 billing.resumeCancelledSubscription(id)
 
-// Licenses
-billing.validateLicense(key)                    // Promise<{ valid: boolean; details? }>
-billing.getLicenseDetails(key)                  // Promise<LicenseKeyEvent | null>
-billing.activateLicense(key, instanceName)      // Promise<{ activated: boolean; instanceId? }>
-billing.deactivateLicense(key, instanceId)      // Promise<boolean>
+// Invoices
+billing.getSubscriptionInvoice(invoiceId)
+billing.listSubscriptionInvoices(filter?)
+billing.generateSubscriptionInvoice(invoiceId)
+billing.issueSubscriptionInvoiceRefund(invoiceId, amount)
 
-// Customers
-billing.getCustomerByEmail(email)               // Promise<CustomerLookup | null>
-billing.getSubscriptionsForUser(userId)         // Promise<Subscription[]>
+// Metered billing
+billing.getSubscriptionItem(itemId)
+billing.listSubscriptionItems(subscriptionId?)
+billing.getSubscriptionItemCurrentUsage(itemId)
+billing.createUsageRecord(subscriptionItemId, quantity, action?)
+billing.listUsageRecords(subscriptionItemId?)
+```
 
-// Webhooks
-billing.createWebhook(url, events, secret?)     // Promise<string>  — webhook ID
-billing.deleteWebhook(webhookId)                // Promise<void>
+### Orders
+```typescript
+billing.getOrder(orderId)
+billing.listOrders(filter?)                     // filter: { storeId?, userEmail? }
+billing.generateOrderInvoice(orderId)
+billing.issueOrderRefund(orderId, amount)
+billing.getOrderItem(orderItemId)
+billing.listOrderItems(filter?)
+```
 
-// Health
-billing.healthCheck()                           // Promise<HealthCheckResult>
+### Customers
+```typescript
+billing.getCustomer(customerId)
+billing.getCustomerByEmail(email)
+billing.createCustomer(storeId, name, email)
+billing.updateCustomer(customerId, params)      // { name?, email? }
+billing.archiveCustomer(customerId)
+billing.getSubscriptionsForUser(userId)
+```
+
+### Licenses
+```typescript
+billing.validateLicense(key)                    // → { valid, details? }
+billing.getLicenseDetails(key)                  // → LicenseKeyEvent | null
+billing.activateLicense(key, instanceName?)     // → { activated, instanceId? }
+billing.deactivateLicense(key, instanceId)      // → boolean
+billing.listLicenseKeys(filter?)
+billing.getLicenseKeyInstance(instanceId)
+billing.listLicenseKeyInstances(licenseKeyId?)
+billing.updateLicenseKey(licenseKeyId, params)  // { disabled?, activationLimit? }
+```
+
+### Webhooks
+```typescript
+billing.listWebhooks()                          // → [{ id, url, events, createdAt }]
+billing.getWebhook(webhookId)                   // → { id, url, events, createdAt } | null
+billing.createWebhook(url, events, secret?)     // → webhook ID
+billing.updateWebhook(webhookId, url?, events?) // → void
+billing.deleteWebhook(webhookId)                // → void
+```
+
+### Catalog
+```typescript
+billing.getProduct(productId)
+billing.listProducts(storeId?)
+billing.getVariant(variantId)
+billing.listVariants(productId?)
+billing.getPrice(priceId)
+billing.listPrices(variantId?)
+billing.getFile(fileId)
+billing.listFiles(variantId?)
+```
+
+### Discounts
+```typescript
+billing.createDiscount(storeId, params)         // params: { name, code, amount, amountType?, expiresAt? }
+billing.deleteDiscount(discountId)
+billing.getDiscount(discountId)
+billing.listDiscounts(storeId?)
+billing.getDiscountRedemption(redemptionId)
+billing.listDiscountRedemptions(discountId?)
+```
+
+### Checkouts
+```typescript
+billing.createCheckout(params)                  // → URL string
+billing.getCheckout(checkoutId)
+billing.listCheckouts(storeId?, variantId?)
 ```
 
 ---
@@ -151,7 +240,7 @@ billing.healthCheck()                           // Promise<HealthCheckResult>
 
 Drop-in router for `/plans` and `/checkout` endpoints:
 
-```ts
+```typescript
 app.use("/billing", billing.getExpressRouter({
   getUserId:    (req) => req.user.id,
   getUserEmail: (req) => req.user.email,
@@ -167,7 +256,7 @@ app.use("/billing", billing.getExpressRouter({
 
 Webhook deduplication is in-memory by default. Swap to Redis or DB for multi-instance:
 
-```ts
+```typescript
 import { RedisDedupBackend } from "fresh-squeezy";
 
 const billing = await createBilling({
@@ -206,21 +295,37 @@ The main API:
     apiKey: process.env.LS_API_KEY,
     webhookSecret: process.env.LS_WEBHOOK_SECRET,
     callbacks: {
-      onPurchase: async (event) => { /* event.userId, .orderId, .email, .price */ },
-      onSubscription: async (event, method) => { /* method: created|updated|cancelled|expired|paused|resumed */ },
-      onSubscriptionPayment: async (event, method) => { /* method: success|recovered */ },
+      onOrder: async (event, method) => {
+        // method: 'purchase' | 'refund'
+        // event: { userId, email, orderId, customerId?, variantId?, productName?, price? }
+      },
+      onSubscription: async (event, method) => {
+        // method: 'created'|'updated'|'cancelled'|'expired'|'paused'|'resumed'
+        //       | 'payment_success'|'payment_recovered'|'payment_failed'
+        // event: { userId, email, subscriptionId, customerId, variantId, status, ... }
+      },
+      onLicenseKey: async (event, method) => {
+        // method: 'created' | 'updated'
+        // event: { userId, email, key, licenseKeyId, productId, variantId, status }
+      },
     },
   });
 
   billing.plans           // available plans/variants
   billing.stores          // store info
-  billing.createCheckout({ variantId, email, userId })  // → checkout URL string
+  billing.createCheckout({ variantId, email, userId })  // → checkout URL
   billing.verifyWebhook(rawBody, signature)             // → boolean
   billing.handleWebhook(payload)                        // dispatches to callbacks
   billing.getCustomerPortal(customerId)                 // → portal URL
-  billing.pauseSubscription(id) / cancelSubscription(id) / resumeSubscription(id)
-  billing.validateLicense(key)  // → { valid, details }
-  billing.activateLicense(key, instanceName)  // → { activated, instanceId }
+
+  // Management (all return typed data)
+  billing.listWebhooks()
+  billing.getSubscription(id) / listSubscriptions(filter?)
+  billing.listOrders(filter?) / getOrder(id) / issueOrderRefund(id, amount)
+  billing.getCustomer(id) / createCustomer(storeId, name, email)
+  billing.validateLicense(key) / activateLicense(key, instanceName)
+  billing.listProducts(storeId?) / listVariants(productId?)
+  billing.createDiscount(storeId, { name, code, amount })
 
 Webhook endpoint pattern (Express):
   app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
@@ -236,9 +341,9 @@ Help me [describe what you need help with].
 
 ## Requirements
 
-- Node.js ≥ 20
-- `@lemonsqueezy/lemonsqueezy.js` ≥ 3.2.0 (peer dep)
-- Express ≥ 4.18 (optional — only for `getExpressRouter`)
+- Node.js >= 20
+- `@lemonsqueezy/lemonsqueezy.js` >= 3.2.0 (peer dep)
+- Express >= 4.18 (optional — only for `getExpressRouter`)
 
 ## License
 

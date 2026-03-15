@@ -1,11 +1,3 @@
-export type SubscriptionMethod =
-  | 'created'
-  | 'updated'
-  | 'cancelled'
-  | 'expired'
-  | 'paused'
-  | 'resumed';
-
 export interface SubscriptionEvent {
   userId: string;
   email: string;
@@ -20,6 +12,8 @@ export interface PaymentFailedEvent {
   email: string;
   subscriptionId: string;
   customerId: string;
+  variantId: string;
+  status: string;
   reason: string;
 }
 
@@ -43,6 +37,8 @@ export interface SubscriptionPaymentSuccessEvent {
   email: string;
   subscriptionId: string;
   customerId: string;
+  variantId: string;
+  status: string;
   orderId: string;
   amount: number;
 }
@@ -52,10 +48,16 @@ export interface SubscriptionPaymentRecoveredEvent {
   email: string;
   subscriptionId: string;
   customerId: string;
+  variantId: string;
+  status: string;
   orderId: string;
   amount: number;
 }
 
-export type SubscriptionPaymentMethod = 'success' | 'recovered';
-
-export type AnySubscriptionEvent = SubscriptionEvent | SubscriptionPausedEvent | SubscriptionResumedEvent;
+export type AnySubscriptionEvent =
+  | SubscriptionEvent
+  | SubscriptionPausedEvent
+  | SubscriptionResumedEvent
+  | SubscriptionPaymentSuccessEvent
+  | SubscriptionPaymentRecoveredEvent
+  | PaymentFailedEvent;

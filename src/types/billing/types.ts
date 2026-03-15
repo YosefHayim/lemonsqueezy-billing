@@ -1,51 +1,54 @@
-import type { LicenseKeyEvent, LicenseMethod } from '../license/types.js';
+import type { LicenseKeyEvent } from '../license/types.js';
 import type { 
   SubscriptionEvent, 
-  PaymentFailedEvent,
-  SubscriptionPausedEvent,
-  SubscriptionResumedEvent,
-  SubscriptionPaymentSuccessEvent,
-  SubscriptionPaymentRecoveredEvent,
-  SubscriptionMethod,
-  SubscriptionPaymentMethod,
   AnySubscriptionEvent,
 } from '../subscription/types.js';
 import type { WebhookMethod, WebhookPayload } from '../webhook/types.js';
 
-export interface PurchaseEvent {
+// ─── Order Events ─────────────────────────────────────────────────────────────
+
+export interface OrderEvent {
   userId: string;
   email: string;
   orderId: string;
-  customerId: string;
-  variantId: string;
-  productName: string;
-  price: number;
+  customerId?: string;
+  variantId?: string;
+  productName?: string;
+  price?: number;
 }
 
-export interface RefundEvent {
-  userId: string;
-  email: string;
-  orderId: string;
-}
+export type OrderMethod = 'purchase' | 'refund';
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+export type SubscriptionMethod =
+  | 'created'
+  | 'updated'
+  | 'cancelled'
+  | 'expired'
+  | 'paused'
+  | 'resumed'
+  | 'payment_success'
+  | 'payment_recovered'
+  | 'payment_failed';
+
+// ─── License ──────────────────────────────────────────────────────────────────
+
+export type LicenseMethod = 'created' | 'updated';
+
+// ─── Webhook union ────────────────────────────────────────────────────────────
 
 export type WebhookEvent =
-  | PurchaseEvent
-  | RefundEvent
-  | SubscriptionEvent
-  | PaymentFailedEvent
-  | SubscriptionPausedEvent
-  | SubscriptionResumedEvent
-  | SubscriptionPaymentSuccessEvent
-  | SubscriptionPaymentRecoveredEvent
+  | OrderEvent
+  | AnySubscriptionEvent
   | LicenseKeyEvent;
 
+// ─── Callbacks ───────────────────────────────────────────────────────────────
+
 export interface BillingCallbacks {
-  onPurchase: (event: PurchaseEvent) => Promise<void>;
-  onRefund?: (event: RefundEvent) => Promise<void>;
+  onOrder: (event: OrderEvent, method: OrderMethod) => Promise<void>;
   onSubscription?: (event: AnySubscriptionEvent, method: SubscriptionMethod) => Promise<void>;
-  onSubscriptionPayment?: (event: SubscriptionPaymentSuccessEvent | SubscriptionPaymentRecoveredEvent, method: SubscriptionPaymentMethod) => Promise<void>;
-  onPaymentFailed?: (event: PaymentFailedEvent) => Promise<void>;
-  onLicenseKey?: (method: LicenseMethod, event: LicenseKeyEvent) => Promise<void>;
+  onLicenseKey?: (event: LicenseKeyEvent, method: LicenseMethod) => Promise<void>;
   onWebhook?: (eventType: WebhookMethod, event: WebhookEvent) => Promise<void>;
 }
 

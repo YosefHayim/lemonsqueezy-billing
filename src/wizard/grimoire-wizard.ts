@@ -199,7 +199,7 @@ export async function runGrimoireWizard(): Promise<void> {
           try {
             const billing = await createBilling({
               apiKey: envKey.value,
-              callbacks: { onPurchase: async () => {} },
+              callbacks: { onOrder: async () => {} },
             });
             validatedStores = billing.stores;
             loading.stop(`[+] Found ${billing.stores.length} store(s)`);
@@ -218,7 +218,7 @@ export async function runGrimoireWizard(): Promise<void> {
           try {
             const billing = await createBilling({
               apiKey,
-              callbacks: { onPurchase: async () => {} },
+              callbacks: { onOrder: async () => {} },
             });
             validatedStores = billing.stores;
             loading.stop(`[+] Found ${billing.stores.length} store(s)`);

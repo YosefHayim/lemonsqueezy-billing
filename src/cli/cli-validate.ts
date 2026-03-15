@@ -85,7 +85,7 @@ async function validateOffline(cachePath: string, logPath: string): Promise<void
 
   let purchaseCount = 0;
   const handler = createWebhookHandler({
-    onPurchase: async () => { purchaseCount++; },
+    onOrder: async () => { purchaseCount++; },
   });
   const orderPayload = {
     meta: { event_name: "order_created", test_mode: false, custom_data: { user_id: "usr_1" } },
@@ -141,7 +141,7 @@ async function validateOffline(cachePath: string, logPath: string): Promise<void
     webhookSecret: WEBHOOK_SECRET,
     cachePath: cachePath,
     cacheTtlMs: 3_600_000,
-    callbacks: { onPurchase: async () => {} },
+    callbacks: { onOrder: async () => {} },
   });
   if (billing.stores.length > 0 && billing.plans.length === 1 && billing.plans[0].price === 499) {
     pass("createBilling from cache");
@@ -170,8 +170,7 @@ async function validateLive(apiKey: string | undefined, cachePath: string, logPa
     cacheTtlMs: 0,
     logger: { filePath: logPath },
     callbacks: {
-      onPurchase: async () => {},
-      onRefund: async () => {},
+      onOrder: async () => {},
     },
   });
 

@@ -1,5 +1,3 @@
-export type LicenseMethod = 'created' | 'updated';
-
 export interface LicenseKeyEvent {
   userId: string;
   email: string;
