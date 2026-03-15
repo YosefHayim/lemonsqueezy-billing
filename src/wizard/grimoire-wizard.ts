@@ -12,7 +12,6 @@ import { LoadingAnimation } from './components/loading.js';
 import type { WizardState } from './state.js';
 import type { StoreInfo, CachedProduct } from '../types/index.js';
 import type { TestEnvConfig } from './test-runner/config.js';
-import { select } from '@inquirer/prompts';
 import 'dotenv/config';
 
 declare const process: {
@@ -68,24 +67,12 @@ export async function runGrimoireWizard(): Promise<void> {
     'webhook-secret': generateSecret(),
   };
 
+  // When only one env key exists, auto-select it and skip the source step
   if (availableKeys.length === 1) {
     console.log(`\n[+] Found ${availableKeys[0].envName} in environment`);
+    templateAnswers['api-key-source'] = availableKeys[0].envName;
     templateAnswers['api-key'] = availableKeys[0].value;
     isSandbox = availableKeys[0].isSandbox;
-    templateAnswers['sandbox-mode'] = isSandbox;
-  } else if (availableKeys.length > 1) {
-    const chosenName = await select({
-      message: 'Choose API key:',
-      choices: availableKeys.map((k) => ({
-        name: `${k.label} (${k.envName})`,
-        value: k.envName,
-      })),
-    });
-    const chosen = availableKeys.find((k) => k.envName === chosenName) ?? availableKeys[0];
-    templateAnswers['api-key'] = chosen.value;
-    isSandbox = chosen.isSandbox;
-    templateAnswers['sandbox-mode'] = isSandbox;
-    console.log(`[+] Using ${chosen.envName}`);
   }
 
   try {
@@ -94,6 +81,18 @@ export async function runGrimoireWizard(): Promise<void> {
       templateAnswers,
 
       onBeforeStep: async (stepId, step, wizardState) => {
+        if (stepId === 'api-key-source' && step.type === 'select') {
+          if (availableKeys.length > 0) {
+            step.options = [
+              ...availableKeys.map((k) => ({
+                value: k.envName,
+                label: `${k.label} (${k.envName})`,
+              })),
+              { value: 'manual', label: 'Enter manually' },
+            ];
+          }
+        }
+
         if (stepId === 'store-selection' && step.type === 'multiselect') {
           if (validatedStores.length > 0) {
             console.log(`  [+] Found ${validatedStores.length} store(s)`);
@@ -136,6 +135,27 @@ export async function runGrimoireWizard(): Promise<void> {
             value: plan.variantId,
             label: `${plan.name} - ${plan.variantName} (${plan.priceFormatted})`,
           }));
+        }
+      },
+
+      onAfterStep: async (_stepId, value, wizardState) => {
+        if (_stepId === 'api-key-source' && value !== 'manual') {
+          const envKey = availableKeys.find((k) => k.envName === value);
+          if (envKey) {
+            wizardState.answers['api-key'] = envKey.value;
+            isSandbox = envKey.isSandbox;
+
+            try {
+              const billing = await createBilling({
+                apiKey: envKey.value,
+                callbacks: { onPurchase: async () => {} },
+              });
+              validatedStores = billing.stores;
+              console.log(`  [+] Validated ${envKey.envName} — found ${billing.stores.length} store(s)`);
+            } catch {
+              console.log(`  [x] API key validation failed for ${envKey.envName}`);
+            }
+          }
         }
       },
 

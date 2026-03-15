@@ -1,24 +1,29 @@
 meta:
-  name: Lemon Squeezy Billing Setup
-  description: Quick setup for your billing integration
+  name: Fresh Squeezy
+  description: Plug-and-play billing — auto-discover products, generate checkouts, handle webhooks.
+  icon: "🍋"
 
 theme:
   preset: catppuccin
   spinner: dots
 
 steps:
+  - id: api-key-source
+    type: select
+    message: "Choose API key:"
+    description: "Detected from environment variables"
+    options:
+      - { value: manual, label: "Enter manually" }
+
   - id: api-key
     type: text
     message: "Enter your Lemon Squeezy API key:"
-    description: "Set LS_TEST_API_KEY or LS_LIVE_API_KEY in .env to skip this step"
+    when:
+      field: api-key-source
+      equals: manual
     validate:
       - rule: required
         message: "API key is required"
-
-  - id: sandbox-mode
-    type: confirm
-    message: "Is this a sandbox/test key?"
-    default: true
 
   - id: store-selection
     type: multiselect
