@@ -79,8 +79,6 @@ export async function runPhaseSetup(
       );
       updates.webhookId = webhook.data?.data?.id;
     } catch { /* empty */ }
-  } else {
-    console.log('[-] Skipping 1.6 createWebhook: no webhookUrl in config');
   }
 
   if (updates.webhookId) {
