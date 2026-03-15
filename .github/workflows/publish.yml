@@ -1,82 +1,119 @@
-name: Publish Package
+name: Release & Publish
+
+# Auto-releases on every push to master.
+#
+# Version bump is determined by conventional commit prefix:
+#   feat!: / BREAKING CHANGE  →  major
+#   feat:                     →  minor
+#   everything else           →  patch
+#
+# If package.json already has an un-tagged version (manual bump),
+# that version is used as-is — no auto-bump.
+#
+# Skip release: add [skip release] to the commit message.
 
 on:
   push:
     branches: [master]
-    tags:
-      - "v*.*.*"
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   id-token: write
   contents: write
 
 jobs:
-  publish:
+  release:
+    if: >
+      !startsWith(github.event.head_commit.message, 'chore(release):') &&
+      !contains(github.event.head_commit.message, '[skip release]')
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
         with:
           version: "9.15.0"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
-          cache: "pnpm"
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check if version needs publishing
-        id: check
+      - name: Configure Git
         run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          NPM_LATEST=$(npm view fresh-squeezy version 2>/dev/null || echo "0.0.0")
-          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-          if [ "$CURRENT" = "$NPM_LATEST" ]; then
-            echo "needs_publish=false" >> "$GITHUB_OUTPUT"
-            echo "Version $CURRENT already on npm — skipping"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump type
+        id: bump
+        run: |
+          MSG=$(git log -1 --pretty=format:'%s')
+
+          if echo "$MSG" | grep -qE '^[a-z]+(\(.*\))?!:' || echo "$MSG" | grep -q 'BREAKING CHANGE'; then
+            echo "type=major" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE '^feat(\(.*\))?:'; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
           else
-            echo "needs_publish=true" >> "$GITHUB_OUTPUT"
-            echo "New version $CURRENT (npm has $NPM_LATEST) — will publish"
+            echo "type=patch" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Typecheck
-        if: steps.check.outputs.needs_publish == 'true'
+          echo "Commit: $MSG"
+          echo "Bump type: $(grep type= "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
+
+      - name: Resolve version
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          TAG="v${CURRENT}"
+
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "v${CURRENT} already tagged — auto-bumping ${{ steps.bump.outputs.type }}"
+            npm version ${{ steps.bump.outputs.type }} --no-git-tag-version
+          else
+            echo "v${CURRENT} is a new version — using as-is"
+          fi
+
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Releasing v${VERSION}"
+
+      - name: Type check
         run: pnpm run typecheck
 
       - name: Build
-        if: steps.check.outputs.needs_publish == 'true'
         run: pnpm run build
 
-      - name: Update npm for trusted publishing support
-        if: steps.check.outputs.needs_publish == 'true'
-        run: npm install -g npm@latest
-
-      - name: Tag and create GitHub Release
-        if: steps.check.outputs.needs_publish == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit version bump and tag
         run: |
-          TAG="v${{ steps.check.outputs.current }}"
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
-          COMMIT_HASH=$(git log -1 --pretty=format:"%h")
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "$COMMIT_MSG" 2>/dev/null || echo "Tag $TAG already exists"
-          git push origin "$TAG" 2>/dev/null || echo "Tag $TAG already pushed"
-          gh release create "$TAG" \
-            --title "$TAG — $COMMIT_MSG" \
-            --notes "$(git log $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:'- %s ([%h](https://github.com/YosefHayim/fresh-squeezy/commit/%H))' 2>/dev/null)" \
-            --latest 2>/dev/null || echo "Release $TAG already exists"
+          if ! git diff --quiet package.json 2>/dev/null; then
+            git add package.json pnpm-lock.yaml 2>/dev/null || git add package.json
+            git commit -m "chore(release): v${{ steps.version.outputs.version }}"
+          fi
+
+          git tag -a "v${{ steps.version.outputs.version }}" \
+            -m "Release v${{ steps.version.outputs.version }}"
+          git push origin master --follow-tags
 
       - name: Publish to npm
-        if: steps.check.outputs.needs_publish == 'true'
         run: pnpm publish --no-git-checks --access public --provenance
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
