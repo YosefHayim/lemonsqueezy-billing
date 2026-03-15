@@ -1,9 +1,9 @@
 # Automated Release Workflow
 # ─────────────────────────
 # Bumps version, builds, publishes to npm, creates GitHub Release + tag
-# when a PR is merged into `master`.
+# when a PR is merged into `master` or a commit is pushed directly.
 #
-# Version bump is determined by PR labels:
+# Version bump is determined by PR labels (or defaults to patch for direct pushes):
 #   - `major` → breaking changes (1.0.0 → 2.0.0)
 #   - `minor` → new features    (1.0.0 → 1.1.0)
 #   - `patch` → bug fixes       (1.0.0 → 1.0.1)  [default]
@@ -15,15 +15,22 @@
 name: Release
 
 on:
+  push:
+    branches: [master]
   pull_request:
     types: [closed]
     branches: [master]
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     if: >
-      github.event.pull_request.merged == true &&
-      !contains(github.event.pull_request.labels.*.name, 'no-release')
+      (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore(release):')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true &&
+       !contains(github.event.pull_request.labels.*.name, 'no-release'))
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -59,12 +66,35 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Check if release needed
+        id: skip_check
+        run: |
+          if git describe --exact-match HEAD >/dev/null 2>&1; then
+            echo "HEAD is already tagged — skipping release"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get release description
+        if: steps.skip_check.outputs.skip != 'true'
+        id: desc
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "title=$(git log -1 --pretty=format:'%s')" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Determine version bump
+        if: steps.skip_check.outputs.skip != 'true'
         id: bump
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
-          if echo "$LABELS" | grep -q '"major"'; then
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          elif echo "$LABELS" | grep -q '"major"'; then
             echo "type=major" >> "$GITHUB_OUTPUT"
           elif echo "$LABELS" | grep -q '"minor"'; then
             echo "type=minor" >> "$GITHUB_OUTPUT"
@@ -73,12 +103,15 @@ jobs:
           fi
 
       - name: Typecheck
+        if: steps.skip_check.outputs.skip != 'true'
         run: pnpm run typecheck
 
       - name: Build
+        if: steps.skip_check.outputs.skip != 'true'
         run: pnpm run build
 
       - name: Bump version in package.json
+        if: steps.skip_check.outputs.skip != 'true'
         id: version
         run: |
           NEW_VERSION=$(npm version ${{ steps.bump.outputs.type }} --no-git-tag-version)
@@ -86,6 +119,7 @@ jobs:
           echo "Bumped to $NEW_VERSION (${{ steps.bump.outputs.type }})"
 
       - name: Build release notes from commits
+        if: steps.skip_check.outputs.skip != 'true'
         id: notes
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -103,7 +137,11 @@ jobs:
             echo "body<<RELEASE_EOF"
             echo "## What Changed"
             echo ""
-            echo "**PR:** [#${PR_NUMBER} — ${PR_TITLE}](${PR_URL})"
+            if [ "${{ github.event_name }}" = "push" ]; then
+              echo "**Direct push to ${GITHUB_REF_NAME}**"
+            else
+              echo "**PR:** [#${PR_NUMBER} — ${PR_TITLE}](${PR_URL})"
+            fi
             echo "**Bump:** \`${BUMP_TYPE}\`"
             echo ""
             echo "### Commits"
@@ -114,24 +152,27 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Commit version bump and create tag
+        if: steps.skip_check.outputs.skip != 'true'
         run: |
           git add package.json pnpm-lock.yaml
           git commit -m "chore(release): ${{ steps.version.outputs.version }}"
           git tag -a "${{ steps.version.outputs.version }}" \
-            -m "Release ${{ steps.version.outputs.version }} — ${{ github.event.pull_request.title }}"
+            -m "Release ${{ steps.version.outputs.version }} — ${{ steps.desc.outputs.title }}"
           git push origin master --follow-tags
 
       - name: Publish to npm
+        if: steps.skip_check.outputs.skip != 'true'
         run: pnpm publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
+        if: steps.skip_check.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.version }}
         run: |
           gh release create "$TAG" \
-            --title "$TAG — ${{ github.event.pull_request.title }}" \
+            --title "$TAG — ${{ steps.desc.outputs.title }}" \
             --notes "${{ steps.notes.outputs.body }}" \
             --latest

@@ -1,6 +1,6 @@
 {
   "name": "fresh-squeezy",
-  "version": "1.0.58",
+  "version": "1.0.60",
   "description": "The missing billing layer for Lemon Squeezy. Auto-discover, checkout, webhooks — one function.",
   "author": "Yosef Hayim Sabag <yosefhayim@proton.me>",
   "homepage": "https://github.com/YosefHayim/fresh-squeezy#readme",
@@ -84,6 +84,6 @@
   "license": "MIT",
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
-    "grimoire-wizard": "^0.5.1"
+    "grimoire-wizard": "link:../grimoire"
   }
 }

@@ -82,6 +82,9 @@ steps:
   - id: webhook-secret
     type: text
     message: "Webhook secret:"
+    when:
+      field: create-webhook
+      equals: true
 
   - id: logger-path
     type: text

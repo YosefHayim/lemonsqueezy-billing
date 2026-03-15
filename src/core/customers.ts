@@ -1,4 +1,4 @@
-import { listCustomers } from "@lemonsqueezy/lemonsqueezy.js";
+import { listCustomers, getCustomer, createCustomer, updateCustomer, archiveCustomer } from "@lemonsqueezy/lemonsqueezy.js";
 import type { CustomerManagement, CustomerLookup } from "../types/index.js";
 import { withRetry } from "./retry.js";
 
@@ -81,5 +81,28 @@ export function createCustomerManagement(): CustomerManagement {
   return {
     getCustomerByEmail,
     getSubscriptionsForUser,
+
+    getCustomer: async (customerId: string) => {
+      const response = await withRetry(() => getCustomer(customerId), "getCustomer");
+      if (response.error) throw new Error(`Failed to get customer: ${response.error.message}`);
+      return response.data?.data?.attributes ?? null;
+    },
+
+    createCustomer: async (storeId: string, name: string, email: string) => {
+      const response = await withRetry(() => createCustomer(storeId, { name, email }), "createCustomer");
+      if (response.error) throw new Error(`Failed to create customer: ${response.error.message}`);
+      if (!response.data?.data) throw new Error("Customer created but no data returned");
+      return response.data.data.id;
+    },
+
+    updateCustomer: async (customerId: string, params: { name?: string; email?: string }) => {
+      const response = await withRetry(() => updateCustomer(customerId, params), "updateCustomer");
+      if (response.error) throw new Error(`Failed to update customer: ${response.error.message}`);
+    },
+
+    archiveCustomer: async (customerId: string) => {
+      const response = await withRetry(() => archiveCustomer(customerId), "archiveCustomer");
+      if (response.error) throw new Error(`Failed to archive customer: ${response.error.message}`);
+    },
   };
 }

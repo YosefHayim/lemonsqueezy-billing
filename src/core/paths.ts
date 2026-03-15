@@ -5,3 +5,4 @@ export const DEFAULT_LOG_PATH = `${BILLING_DIR}/billing.log`;
 
 export const WIZARD_CONFIG_FILE = `${BILLING_DIR}/billing-config.ts`;
 export const WIZARD_EXAMPLE_FILE = `${BILLING_DIR}/example.ts`;
+export const WIZARD_SELECTION_CACHE = `${BILLING_DIR}/wizard-cache.json`;

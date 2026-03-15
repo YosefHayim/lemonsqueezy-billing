@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { loadWizardConfig, runWizard } from 'grimoire-wizard';
 import { createBilling } from '../core/index.js';
@@ -20,7 +21,7 @@ declare const process: {
   cwd: () => string;
 };
 
-// ─── Env helpers ────────────────────────────────────────────────
+const WIZARD_CACHE_FILE = `${BILLING_DIR}/wizard-cache.json`;
 
 function envId(key: string): string | undefined {
   const value = process.env[key];
@@ -50,24 +51,56 @@ function getAvailableApiKeys(): EnvApiKey[] {
   return keys;
 }
 
-// ─── Runtime state (populated during wizard) ────────────────────
+type WizardCache = Record<string, unknown>;
+
+function loadWizardCache(): WizardCache {
+  const cachePath = resolve(process.cwd(), WIZARD_CACHE_FILE);
+  if (!existsSync(cachePath)) return {};
+  try {
+    return JSON.parse(readFileSync(cachePath, 'utf8')) as WizardCache;
+  } catch {
+    return {};
+  }
+}
+
+function saveWizardCache(answers: WizardCache): void {
+  const cachePath = resolve(process.cwd(), WIZARD_CACHE_FILE);
+  const dir = resolve(process.cwd(), BILLING_DIR);
+  mkdirSync(dir, { recursive: true });
+  const safe = { ...answers };
+  delete safe['api-key'];
+  delete safe['api-key-source'];
+  writeFileSync(cachePath, JSON.stringify(safe, null, 2), 'utf8');
+}
+
+function checkedFromCache(
+  options: Array<{ value: string; label: string }>,
+  cached: string[] | undefined,
+): Array<{ value: string; label: string; checked: boolean }> {
+  if (cached?.length) {
+    return options.map((o) => ({ ...o, checked: cached.includes(o.value) }));
+  }
+  return options.map((o, i) => ({ ...o, checked: i === 0 }));
+}
 
 let validatedStores: StoreInfo[] = [];
 let allProducts: CachedProduct[] = [];
 let isSandbox = false;
-
-// ─── Main ───────────────────────────────────────────────────────
 
 export async function runGrimoireWizard(): Promise<void> {
   const configPath = new URL('./wizard-config.yaml', import.meta.url).pathname;
   const config = await loadWizardConfig(configPath);
 
   const availableKeys = getAvailableApiKeys();
+  const cache = loadWizardCache();
   const templateAnswers: Record<string, unknown> = {
-    'webhook-secret': generateSecret(),
+    'webhook-secret': (cache['webhook-secret'] as string) || generateSecret(),
+    'cache-path': cache['cache-path'] ?? undefined,
+    'logger-path': cache['logger-path'] ?? undefined,
+    'create-webhook': cache['create-webhook'] ?? undefined,
+    'webhook-url': cache['webhook-url'] ?? undefined,
   };
 
-  // When only one env key exists, auto-select it and skip the source step
   if (availableKeys.length === 1) {
     console.log(`\n[+] Found ${availableKeys[0].envName} in environment`);
     templateAnswers['api-key-source'] = availableKeys[0].envName;
@@ -97,11 +130,10 @@ export async function runGrimoireWizard(): Promise<void> {
 
         if (stepId === 'store-selection' && step.type === 'multiselect') {
           if (validatedStores.length > 0) {
-            console.log(`  [+] Found ${validatedStores.length} store(s)`);
-            step.options = validatedStores.map((store) => ({
-              value: store.id,
-              label: `${store.name} (${store.id})`,
-            }));
+            step.options = checkedFromCache(
+              validatedStores.map((s) => ({ value: s.id, label: `${s.name} (${s.id})` })),
+              cache['store-selection'] as string[] | undefined,
+            );
           } else {
             step.options = [{ value: '__invalid__', label: 'No stores found — check API key' }];
           }
@@ -135,36 +167,49 @@ export async function runGrimoireWizard(): Promise<void> {
             return;
           }
 
-          step.options = plans.map((plan) => ({
-            value: plan.variantId,
-            label: `${plan.name} - ${plan.variantName} (${plan.priceFormatted})`,
-          }));
+          step.options = checkedFromCache(
+            plans.map((p) => ({ value: p.variantId, label: `${p.name} - ${p.variantName} (${p.priceFormatted})` })),
+            cache['product-selection'] as string[] | undefined,
+          );
         }
-      },
 
-      onAfterStep: async (_stepId, value, wizardState) => {
-        if (_stepId === 'api-key-source' && value !== 'manual') {
-          const envKey = availableKeys.find((k) => k.envName === value);
-          if (envKey) {
-            wizardState.answers['api-key'] = envKey.value;
-            isSandbox = envKey.isSandbox;
-
-            loading.start('Validating API key');
-            try {
-              const billing = await createBilling({
-                apiKey: envKey.value,
-                callbacks: { onPurchase: async () => {} },
-              });
-              validatedStores = billing.stores;
-              loading.stop(`[+] Found ${billing.stores.length} store(s)`);
-            } catch {
-              loading.stop('[x] API key validation failed');
-            }
+        if (stepId === 'webhook-events' && step.type === 'multiselect' && step.options) {
+          const cachedEvents = cache['webhook-events'] as string[] | undefined;
+          if (cachedEvents?.length) {
+            step.options = (step.options as Array<{ value: string; label: string }>).map((o) => ({
+              ...o,
+              checked: cachedEvents.includes(o.value),
+            }));
+          } else {
+            step.options = (step.options as Array<{ value: string; label: string }>).map((o, i) => ({
+              ...o,
+              checked: i === 0,
+            }));
           }
         }
       },
 
       asyncValidate: async (stepId, value, currentAnswers) => {
+        if (stepId === 'api-key-source' && value !== 'manual') {
+          const envKey = availableKeys.find((k) => k.envName === value);
+          if (!envKey) return 'Invalid key selection';
+
+          isSandbox = envKey.isSandbox;
+          loading.start('Validating API key');
+          try {
+            const billing = await createBilling({
+              apiKey: envKey.value,
+              callbacks: { onPurchase: async () => {} },
+            });
+            validatedStores = billing.stores;
+            loading.stop(`[+] Found ${billing.stores.length} store(s)`);
+            return null;
+          } catch {
+            loading.stop('[x] API key validation failed');
+            return `API key validation failed for ${envKey.envName}`;
+          }
+        }
+
         if (stepId === 'api-key') {
           const apiKey = value as string;
           if (!apiKey) return 'API key is required';
@@ -210,9 +255,18 @@ export async function runGrimoireWizard(): Promise<void> {
 
         return null;
       },
+
+      onAfterStep: async (stepId, value, wizardState) => {
+        if (stepId === 'api-key-source' && value !== 'manual') {
+          const envKey = availableKeys.find((k) => k.envName === value);
+          if (envKey) {
+            wizardState.answers['api-key'] = envKey.value;
+          }
+        }
+      },
     });
 
-    // ─── Post-wizard: Generate files ────────────────────────────
+    saveWizardCache(answers);
 
     const shouldGenerate = answers['generate-files'] as boolean;
     if (!shouldGenerate) {
@@ -260,8 +314,6 @@ export async function runGrimoireWizard(): Promise<void> {
     console.log(`2. Run: npx tsx ${WIZARD_EXAMPLE_FILE}`);
     console.log('3. Start building your billing integration!');
 
-    // ─── Validation tests ───────────────────────────────────────
-
     console.log('\nRunning validation tests...');
 
     try {
@@ -290,12 +342,9 @@ export async function runGrimoireWizard(): Promise<void> {
       console.log('\n[x] Validation tests failed:');
       console.error('Error:', error instanceof Error ? error.message : error);
       console.log('\nPlease review the generated files and fix any issues.');
-      console.log('You can run the following commands to debug:');
       console.log('  pnpm typecheck');
       console.log('  pnpm build');
     }
-
-    // ─── Optional lifecycle tests ───────────────────────────────
 
     const runTests = answers['run-tests'] as boolean;
     if (runTests) {

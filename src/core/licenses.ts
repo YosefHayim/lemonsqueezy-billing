@@ -1,4 +1,4 @@
-import { getLicenseKey } from "@lemonsqueezy/lemonsqueezy.js";
+import { getLicenseKey, listLicenseKeys, getLicenseKeyInstance, listLicenseKeyInstances, updateLicenseKey } from "@lemonsqueezy/lemonsqueezy.js";
 import type {
   LicenseKeyManagement,
   LicenseKeyEvent,
@@ -140,5 +140,28 @@ export function createLicenseKeyManagement(): LicenseKeyManagement {
     getLicenseDetails,
     activateLicense,
     deactivateLicense,
+
+    listLicenseKeys: async (filter = {}) => {
+      const response = await withRetry(() => listLicenseKeys({ filter }), "listLicenseKeys");
+      if (response.error) throw new Error(`Failed to list license keys: ${response.error.message}`);
+      return (response.data?.data ?? []).map((k: any) => ({ id: k.id, ...k.attributes }));
+    },
+
+    getLicenseKeyInstance: async (instanceId: string) => {
+      const response = await withRetry(() => getLicenseKeyInstance(instanceId), "getLicenseKeyInstance");
+      if (response.error) throw new Error(`Failed to get license key instance: ${response.error.message}`);
+      return response.data?.data?.attributes ?? null;
+    },
+
+    listLicenseKeyInstances: async (licenseKeyId?: string) => {
+      const response = await withRetry(() => listLicenseKeyInstances({ filter: { licenseKeyId } }), "listLicenseKeyInstances");
+      if (response.error) throw new Error(`Failed to list license key instances: ${response.error.message}`);
+      return (response.data?.data ?? []).map((i: any) => ({ id: i.id, ...i.attributes }));
+    },
+
+    updateLicenseKey: async (licenseKeyId: string, params: { disabled?: boolean; activationLimit?: number }) => {
+      const response = await withRetry(() => updateLicenseKey(licenseKeyId, params), "updateLicenseKey");
+      if (response.error) throw new Error(`Failed to update license key: ${response.error.message}`);
+    },
   };
 }
