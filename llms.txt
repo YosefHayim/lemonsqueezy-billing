@@ -1,14 +1,140 @@
 # fresh-squeezy
 
-> The missing billing layer for Lemon Squeezy. Auto-discover stores/products, create checkout sessions, handle webhooks — one function call.
+> Skip the boilerplate. Auto-discover stores and products, generate checkouts, handle webhooks — one function call, full TypeScript, backed by automated API monitoring.
 
-## Docs
-- [README](./README.md): Full documentation, API reference, and examples
-- [Types](./src/types.ts): All TypeScript interfaces and type definitions
+## What it is
 
-## Examples
-- [Quick Start](./README.md#quick-start): Initialize billing and create your first checkout
+fresh-squeezy is a plug-and-play billing layer for Lemon Squeezy. Pass your API key, define 4 callbacks, get a fully-wired billing backend. Ships with an interactive CLI wizard that auto-discovers your products and generates ready-to-run config files.
 
-## Optional
-- [Contributing](./CONTRIBUTING.md): Development setup and guidelines
-- [Changelog](./CHANGELOG.md): Version history
+## Install
+
+npm install fresh-squeezy @lemonsqueezy/lemonsqueezy.js
+
+## Quick start
+
+```typescript
+import { createBilling } from "fresh-squeezy";
+
+const billing = await createBilling({
+  apiKey: process.env.LS_API_KEY,
+  webhookSecret: process.env.LS_WEBHOOK_SECRET,
+  skipTestEvents: true,   // ignore test-mode webhooks in production
+  callbacks: {
+    onOrder: async (event, method, meta) => {
+      // method: 'purchase' | 'refund'
+      // meta: { isTest: boolean, eventId: string }
+      if (method === "purchase") await db.grantAccess(event.userId);
+      if (method === "refund")   await db.revokeAccess(event.userId);
+    },
+    onSubscription: async (event, method, meta) => {
+      // method: 'created'|'updated'|'cancelled'|'expired'|'paused'|'resumed'
+      //       | 'payment_success'|'payment_recovered'|'payment_failed'
+      if (method === "created")         await db.startSubscription(event.userId);
+      if (method === "cancelled")       await db.cancelSubscription(event.userId);
+      if (method === "payment_failed")  await notify.sendPaymentFailed(event.email);
+    },
+    onLicenseKey: async (event, method, meta) => {
+      // method: 'created' | 'updated'
+      if (method === "created") await db.storeLicense(event.userId, event.key);
+    },
+  },
+});
+
+// Checkout
+const url = await billing.createCheckout({ variantId: "123", email: "user@example.com", userId: "user_1" });
+
+// Webhook (Express)
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!billing.verifyWebhook(req.body.toString(), req.headers["x-signature"] as string))
+    return res.sendStatus(401);
+  await billing.handleWebhook(JSON.parse(req.body.toString()));
+  res.json({ ok: true });
+});
+```
+
+## Callbacks
+
+4 callbacks, all with the same `(event, method, meta)` pattern:
+
+- `onOrder(event, method, meta)` — required. method: `'purchase' | 'refund'`
+- `onSubscription?(event, method, meta)` — optional. method: `'created'|'updated'|'cancelled'|'expired'|'paused'|'resumed'|'payment_success'|'payment_recovered'|'payment_failed'`
+- `onLicenseKey?(event, method, meta)` — optional. method: `'created' | 'updated'`
+- `onWebhook?(eventType, event, meta)` — optional catch-all
+
+`meta` always contains `{ isTest: boolean, eventId: string }`.
+
+## BillingConfig fields
+
+- `apiKey` — Lemon Squeezy API key
+- `webhookSecret` — webhook signing secret
+- `storeId?` — restrict to specific store
+- `skipTestEvents?` — if true, test-mode webhooks are no-ops (default: false)
+- `callbacks` — BillingCallbacks object
+- `cachePath?` — path to JSON cache file for customer lookups
+- `cacheTtlMs?` — cache TTL in milliseconds
+- `logger?` — `{ filePath }` or `{ custom: BillingLogger }`
+- `dedup?` — `{ backend?, ttlMs? }` deduplication config
+
+## Management API (all on the billing object)
+
+### Core
+- `billing.stores` — StoreInfo[]
+- `billing.plans` — Plan[]
+- `billing.createCheckout(params)` → URL string
+- `billing.verifyWebhook(rawBody, signature)` → boolean
+- `billing.handleWebhook(payload)` → dispatches to callbacks
+- `billing.refreshPlans()` — refresh cached plans
+- `billing.getCustomerPortal(customerId)` → portal URL
+- `billing.getExpressRouter(options)` — Express Router
+- `billing.healthCheck()` → HealthCheckResult
+
+### Stores & Auth
+- `getStore(storeId)`, `listStores()`, `getAuthenticatedUser()`
+
+### Subscriptions
+- `getSubscription(id)`, `listSubscriptions(filter?)`
+- `pauseSubscription(id)`, `resumeSubscription(id)`, `cancelSubscription(id)`, `changeSubscriptionVariant(id, variantId)`, `resumeCancelledSubscription(id)`
+- `getSubscriptionInvoice(id)`, `listSubscriptionInvoices(filter?)`, `generateSubscriptionInvoice(id)`, `issueSubscriptionInvoiceRefund(id, amount)`
+- `getSubscriptionItem(id)`, `listSubscriptionItems(subscriptionId?)`, `getSubscriptionItemCurrentUsage(id)`
+- `createUsageRecord(subscriptionItemId, quantity, action?)`, `listUsageRecords(subscriptionItemId?)`
+
+### Orders
+- `getOrder(id)`, `listOrders(filter?)`, `generateOrderInvoice(id)`, `issueOrderRefund(id, amount)`
+- `getOrderItem(id)`, `listOrderItems(filter?)`
+
+### Customers
+- `getCustomer(id)`, `getCustomerByEmail(email)`, `createCustomer(storeId, name, email)`
+- `updateCustomer(id, params)`, `archiveCustomer(id)`, `getSubscriptionsForUser(userId)`
+
+### Licenses
+- `validateLicense(key)`, `getLicenseDetails(key)`, `activateLicense(key, instanceName?)`, `deactivateLicense(key, instanceId)`
+- `listLicenseKeys(filter?)`, `getLicenseKeyInstance(id)`, `listLicenseKeyInstances(licenseKeyId?)`, `updateLicenseKey(id, params)`
+
+### Webhooks
+- `listWebhooks()`, `getWebhook(id)`, `createWebhook(url, events, secret?)`, `updateWebhook(id, url?, events?)`, `deleteWebhook(id)`
+
+### Catalog
+- `getProduct(id)`, `listProducts(storeId?)`, `getVariant(id)`, `listVariants(productId?)`
+- `getPrice(id)`, `listPrices(variantId?)`, `getFile(id)`, `listFiles(variantId?)`
+
+### Discounts
+- `createDiscount(storeId, params)`, `deleteDiscount(id)`, `getDiscount(id)`, `listDiscounts(storeId?)`
+- `getDiscountRedemption(id)`, `listDiscountRedemptions(discountId?)`
+
+### Checkouts
+- `createCheckout(params)`, `getCheckout(id)`, `listCheckouts(storeId?, variantId?)`
+
+## Setup wizard
+
+```bash
+npx fresh-squeezy wizard
+```
+
+Auto-discovers stores and products using your API key, generates `.billing/billing-config.ts` and `.billing/example.ts`. Previous answers cached to `.billing/wizard-cache.json`.
+
+## Package
+
+npm: fresh-squeezy
+GitHub: https://github.com/YosefHayim/fresh-squeezy
+License: MIT
+Node: >= 18
