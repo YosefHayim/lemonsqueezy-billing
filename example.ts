@@ -1,20 +1,34 @@
 import express from "express";
-import { createBilling } from "@yosefhayim/lemonsqueezy-billing";
-import { billingConfig } from "./billing-config";
+import { createBilling } from "fresh-squeezy";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 async function setupBilling() {
   try {
-    const billing = await createBilling(billingConfig);
+    const billing = await createBilling({
+      apiKey: process.env.LS_API_KEY ?? "",
+      webhookSecret: process.env.LS_WEBHOOK_SECRET ?? "",
+      callbacks: {
+        onOrder: async (event, method) => {
+          if (method === "purchase") console.log("[+] Purchase:", event.orderId, event.email);
+          if (method === "refund")   console.log("[-] Refund:", event.orderId);
+        },
+        onSubscription: async (event, method) => {
+          console.log(`[~] Subscription ${method}:`, event);
+        },
+        onLicenseKey: async (event, method) => {
+          console.log(`[K] License ${method}:`, event.key);
+        },
+      },
+    });
 
     console.log("[+] Billing setup complete!");
     console.log("Available stores:", billing.stores.map(s => s.name));
     console.log("Available plans:", billing.plans.length);
 
     const checkoutUrl = await billing.createCheckout({
-      variantId: billing.plans[0]?.variantId ?? "1393711",
+      variantId: billing.plans[0]?.variantId ?? "your-variant-id",
       email: "user@example.com",
       userId: "user-123",
     });
