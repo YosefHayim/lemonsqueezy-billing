@@ -11,7 +11,7 @@
 ## Install
 
 ```bash
-npm install fresh-squeezy @lemonsqueezy/lemonsqueezy.js
+npm install fresh-squeezy
 ```
 
 ---
@@ -69,7 +69,9 @@ npx fresh-squeezy-billing wizard
 
 Generates `.billing/billing-config.ts` and `.billing/example.ts`. Previous answers are cached to `.billing/wizard-cache.json` for fast re-runs.
 
-> Built with [grimoire-wizard](https://github.com/YosefHayim/grimoire) — config-driven CLI wizard framework.
+**Powered by [grimoire-wizard](https://github.com/YosefHayim/grimoire)** [![npm](https://img.shields.io/npm/v/grimoire-wizard)](https://www.npmjs.com/package/grimoire-wizard)
+
+The wizard experience is built on top of [grimoire-wizard](https://github.com/YosefHayim/grimoire) — a config-driven CLI wizard framework for Node.js. Define interactive terminal wizards in YAML with back-navigation, conditional branching, validation, and structured output. If you need a wizard UI for your own CLI tool, check it out.
 
 ---
 
@@ -285,7 +287,7 @@ Copy the block below and paste it into Claude, ChatGPT, or any LLM to get instan
 I'm integrating the npm package "fresh-squeezy" (Lemon Squeezy billing layer) into my project.
 
 Package: fresh-squeezy
-Install: npm install fresh-squeezy @lemonsqueezy/lemonsqueezy.js
+Install: npm install fresh-squeezy
 
 The main API:
 
