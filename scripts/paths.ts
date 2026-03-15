@@ -7,4 +7,4 @@ export const CLI_TEST_CACHE_PATH = join(tmpdir(), `${PREFIX}-cli-test-cache.json
 export const CLI_TEST_LOG_PATH = join(tmpdir(), `${PREFIX}-cli-test.log`);
 
 export const CHANGELOG_STATE_FILE = "scripts/ls-changelog/state.md";
-export const CHANGELOG_DOCS_DIR = "scripts/ls-changelog/changelog";
+export const CHANGELOG_DOCS_DIR = "changelog";

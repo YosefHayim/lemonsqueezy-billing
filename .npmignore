@@ -1,5 +1,5 @@
 scripts/
-ls-changelog/
+changelog/
 .github/
 .husky/
 docs/
