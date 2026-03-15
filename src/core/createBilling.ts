@@ -45,7 +45,7 @@ export async function createBilling(config: BillingConfig): Promise<Billing> {
     ? createWebhookVerifier(config.webhookSecret)
     : (): boolean => { throw new Error("webhookSecret is required for webhook verification"); };
 
-  const rawHandleWebhook = createWebhookHandler(config.callbacks);
+  const rawHandleWebhook = createWebhookHandler(config.callbacks, undefined, { skipTestEvents: config.skipTestEvents });
 
   const loggedHandleWebhook = withLogger(
     logger,

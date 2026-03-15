@@ -24,6 +24,7 @@ export type {
   CachedVariant,
   CheckoutParams,
   WebhookPayload,
+  WebhookMeta,
   ExpressRouterOptions,
   SubscriptionManagement,
   LicenseKeyManagement,
