@@ -18,6 +18,8 @@ npm install fresh-squeezy
 
 ## Quick Start
 
+Callbacks are **yours to implement** — `event` delivers typed data, you write the business logic:
+
 ```typescript
 import { createBilling } from "fresh-squeezy";
 
@@ -26,17 +28,31 @@ const billing = await createBilling({
   webhookSecret: process.env.LS_WEBHOOK_SECRET!,
   callbacks: {
     onOrder: async (event, method) => {
-      if (method === 'purchase') await db.grantAccess(event.userId);
-      if (method === 'refund')   await db.revokeAccess(event.userId);
+      // event.userId  — your internal user ID (the one you pass at checkout)
+      // event.email   — customer email
+      // event.orderId — Lemon Squeezy order ID
+      // event.price   — amount in cents
+      if (method === 'purchase') {
+        // e.g. await prisma.user.update({ where: { id: event.userId }, data: { isPro: true } })
+      }
+      if (method === 'refund') {
+        // e.g. await prisma.user.update({ where: { id: event.userId }, data: { isPro: false } })
+      }
     },
     onSubscription: async (event, method) => {
-      if (method === 'created')          await db.startSubscription(event.userId);
-      if (method === 'cancelled')        await db.cancelSubscription(event.userId);
-      if (method === 'payment_success')  await db.extendAccess(event.userId, event.amount);
-      if (method === 'payment_failed')   await notifications.sendPaymentFailed(event.email);
+      // event.userId         — your internal user ID
+      // event.subscriptionId — Lemon Squeezy subscription ID
+      // event.status         — active | cancelled | expired | paused
+      if (method === 'created')         { /* activate subscription in your DB */ }
+      if (method === 'cancelled')       { /* mark subscription cancelled */ }
+      if (method === 'payment_success') { /* extend access, clear dunning flags */ }
+      if (method === 'payment_failed')  { /* notify customer, start dunning */ }
     },
     onLicenseKey: async (event, method) => {
-      if (method === 'created') await db.storeLicense(event.userId, event.key);
+      // event.userId — your internal user ID
+      // event.key    — the license key string to store and share with the user
+      // event.status — active | inactive | expired
+      if (method === 'created') { /* store event.key in your DB */ }
     },
   },
 });
